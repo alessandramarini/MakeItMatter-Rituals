@@ -1,0 +1,1211 @@
+<!DOCTYPE html>
+<html lang="it" style="--page-width-px: 576px; --page-height-px: 864px; --safe-margin-px: 96px; --font-scale: 0.85;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mystic Grimoire Studio | Arcane Edition</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"></script>
+    <!-- Magical Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800&family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
+    
+    <style id="dynamicPrintStyle">@media print { @page { size: 6in 9in; margin: 0 !important; } .page-text, .page-bleed { width: 6in !important; height: 9in !important; overflow: hidden !important; } }</style>
+
+    <style>
+        :root {
+            --page-width-px: 816px;
+            --page-height-px: 1056px;
+            --safe-margin-px: 96px;
+            --font-scale: 1;
+            /* Magical Theme Colors */
+            --bg-dark: #0f0a18;
+            --bg-panel: #1a1128;
+            --accent-gold: #d4af37;
+            --text-light: #eaddcf;
+            --parchment: #fdfbf7;
+        }
+
+        body { 
+            font-family: 'Crimson Text', serif; 
+            background-color: var(--bg-dark); 
+            color: var(--text-light); 
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; 
+        }
+        
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-dark); }
+        ::-webkit-scrollbar-thumb { background: #3b2854; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-gold); }
+
+        .loader { 
+            border: 2px solid rgba(212, 175, 55, 0.2); 
+            border-top: 2px solid var(--accent-gold); 
+            border-radius: 50%; 
+            width: 18px; height: 18px; 
+            animation: spin 1s linear infinite; 
+            display: inline-block; vertical-align: middle; 
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Workspace & Toolbar */
+        #editorContainer { display: flex; flex-direction: column; flex: 1; height: 100%; background-color: #150e1f; }
+        #toolbar { 
+            background-color: var(--bg-panel); border-bottom: 1px solid #2a1b3d; 
+            padding: 8px 16px; display: flex; gap: 16px; align-items: center; justify-content: center; z-index: 10; 
+            box-shadow: 0 4px 15px -1px rgba(0,0,0,0.5); 
+        }
+        .toolbar-group { display: flex; gap: 4px; border-right: 1px solid #3b2854; padding-right: 16px; }
+        .toolbar-group:last-child { border-right: none; }
+        .tool-btn { 
+            background: #2a1b3d; color: var(--text-light); border: 1px solid transparent; border-radius: 4px; 
+            padding: 6px 10px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; 
+        }
+        .tool-btn:hover { background: #3b2854; color: var(--accent-gold); border-color: var(--accent-gold); }
+        .tool-btn svg { width: 16px; height: 16px; pointer-events: none; }
+
+        #editorWorkspace { 
+            background-color: #0a060f; overflow-y: auto; display: flex; flex-direction: column; align-items: center; 
+            padding: 4rem 2rem; flex: 1; scroll-behavior: smooth;
+        }
+        
+        #bookPage { 
+            width: 100%; display: flex; flex-direction: column; align-items: center; gap: 3.5rem; outline: none; counter-reset: pdf-page; 
+        }
+
+        /* ---------------------------------------------------------
+           PAGE STRUCTURE (Parchment look)
+        --------------------------------------------------------- */
+        .page-text, .page-bleed { 
+            background-color: var(--parchment); 
+            background-image: radial-gradient(circle, transparent 20%, #f4ebd8 140%);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(212, 175, 55, 0.2); 
+            width: var(--page-width-px); height: var(--page-height-px); 
+            position: relative; overflow: hidden; color: #2a2a2a; box-sizing: border-box; flex-shrink: 0; 
+            counter-increment: pdf-page; 
+        }
+        
+        .page-text { padding: var(--safe-margin-px); display: flex; flex-direction: column; border: 8px double #e8dcc4; }
+        .page-bleed { padding: 0; display: flex; justify-content: center; align-items: center; border: none; background: #000; }
+        .page-bleed img { width: 100%; height: 100%; object-fit: cover; opacity: 0.9; }
+
+        .page-text::after, .page-bleed::after { 
+            content: "- " counter(pdf-page) " -"; position: absolute; bottom: calc(var(--safe-margin-px) * 0.4); 
+            left: 0; width: 100%; text-align: center; font-family: 'Cinzel', serif; font-size: calc(11pt * var(--font-scale)); 
+            pointer-events: none; z-index: 50; 
+        }
+        .page-text::after { color: #5a4b41; }
+        .page-bleed::after { color: var(--accent-gold); text-shadow: 0px 2px 4px rgba(0,0,0,1); }
+
+        /* Typography */
+        .doc-title { font-family: 'Cinzel', serif; font-size: calc(3.5rem * var(--font-scale)); text-align: center; color: #1a0b2e; line-height: 1.1; margin: 0; outline: none; text-shadow: 1px 1px 0px rgba(212,175,55,0.3); }
+        .doc-h1 { font-family: 'Cinzel', serif; font-size: calc(2.2rem * var(--font-scale)); text-align: center; color: #2c1b4d; margin: 0 0 calc(1.5rem * var(--font-scale)) 0; line-height: 1.2; border-bottom: 2px solid var(--accent-gold); padding-bottom: 10px; }
+        .doc-h2 { font-family: 'Cinzel', serif; font-size: calc(1.8rem * var(--font-scale)); color: #2c1b4d; margin-top: 0; margin-bottom: calc(1.2rem * var(--font-scale)); display: inline-block; font-weight: 800; }
+        .doc-quote { font-family: 'Crimson Text', serif; font-size: calc(1.3rem * var(--font-scale)); font-style: italic; text-align: center; color: #4a3f35; margin: 0 0 calc(1rem * var(--font-scale)) 0; line-height: 1.5; padding: 0 2rem; }
+        
+        .unit-alt { color: #8a7b65; font-size: 0.85em; font-style: italic; }
+
+        /* ---------------------------------------------------------
+           ARCANE ATTRIBUTES BAR
+        --------------------------------------------------------- */
+        .recipe-meta-bar { display: flex; justify-content: center; gap: calc(3rem * var(--font-scale)); margin: calc(1.5rem * var(--font-scale)) 0; border-top: 1px dotted #8a7b65; border-bottom: 1px dotted #8a7b65; padding: calc(1rem * var(--font-scale)) 0; flex-shrink: 0; }
+        .meta-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .meta-val { font-family: 'Cinzel', serif; font-size: calc(14pt * var(--font-scale)); color: #1a0b2e; font-weight: 700; line-height: 1; }
+        .meta-lbl { font-family: 'Cinzel', serif; font-size: calc(8pt * var(--font-scale)); text-transform: uppercase; letter-spacing: 2px; color: #5a4b41; font-weight: 600; }
+
+        .nutrition-panel { background: rgba(255,255,255,0.5); border: 2px solid var(--accent-gold); border-radius: 4px; padding: calc(1.5rem * var(--font-scale)); width: 100%; max-width: 480px; margin: 0 auto; box-shadow: inset 0 0 20px rgba(212,175,55,0.1); flex-shrink: 0; }
+        .nut-header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #2c1b4d; padding-bottom: 8px; margin-bottom: 12px; }
+        .nut-title { font-family: 'Cinzel', serif; font-size: calc(13pt * var(--font-scale)); font-weight: 800; color: #2c1b4d; margin: 0; }
+        .nut-subtitle { font-family: 'Crimson Text', serif; font-style: italic; font-size: calc(10pt * var(--font-scale)); color: #5a4b41; }
+        .nut-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 2rem; row-gap: 8px; }
+        .nut-row { display: flex; justify-content: space-between; font-family: 'Crimson Text', serif; font-size: calc(11pt * var(--font-scale)); border-bottom: 1px dotted #d4c4a8; padding-bottom: 4px; }
+        .nut-lbl { color: #2c1b4d; font-weight: 600; font-variant: small-caps; }
+        .nut-val-txt { color: #1a0b2e; font-weight: 700; font-family: 'Cinzel', serif;}
+
+        /* ---------------------------------------------------------
+           MATERIA MAGICA (Components)
+        --------------------------------------------------------- */
+        .ingredients-container { width: 100%; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 2rem; }
+        .ingredients-grid-2col { column-count: 2; column-gap: calc(2.5rem * var(--font-scale)); width: 100%; margin-top: calc(1rem * var(--font-scale)); }
+        .ingr-item { display: flex; align-items: flex-start; gap: 12px; padding: calc(8px * var(--font-scale)) 0; break-inside: avoid; page-break-inside: avoid; }
+        .ingr-check { width: calc(14px * var(--font-scale)); height: calc(14px * var(--font-scale)); border: 1px solid var(--accent-gold); transform: rotate(45deg); flex-shrink: 0; margin-top: 6px; }
+        .ingr-text { font-family: 'Crimson Text', serif; font-size: calc(12.5pt * var(--font-scale)); color: #1a0b2e; line-height: 1.4; flex: 1; min-width: 0; word-break: break-word; }
+
+        /* ---------------------------------------------------------
+           RITUAL STEPS
+        --------------------------------------------------------- */
+        .steps-page-wrapper { display: flex; flex-direction: column; height: 100%; width: 100%; }
+        .steps-header-box { flex-shrink: 0; margin-bottom: calc(1.5rem * var(--font-scale)); text-align: center;}
+        .steps-grid { display: flex; flex-direction: column; flex: 1; width: 100%; justify-content: space-between; gap: calc(1.5rem * var(--font-scale)); }
+        .step-row { display: flex; flex-direction: row; align-items: center; gap: calc(1.5rem * var(--font-scale)); background: transparent; padding: 0; box-sizing: border-box; flex: 1; border-bottom: 1px solid #d4c4a8; padding-bottom: 15px;}
+        .step-row:last-child { border-bottom: none; }
+        .step-img-box { width: calc(160px * var(--font-scale)); height: calc(160px * var(--font-scale)); flex-shrink: 0; overflow: hidden; border: 2px solid var(--accent-gold); border-radius: 50%; padding: 4px; background: #fff;}
+        .step-img-small { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: 50%; filter: sepia(30%) contrast(1.1); }
+        .step-content { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+        .step-title { font-family: 'Cinzel', serif; font-size: calc(1.3rem * var(--font-scale)); color: #2c1b4d; margin: 0 0 calc(0.45rem * var(--font-scale)) 0; font-weight: 800; line-height: 1.2; }
+        .step-desc { font-family: 'Crimson Text', serif; font-size: calc(12.5pt * var(--font-scale)); line-height: 1.6; color: #1a0b2e; margin: 0; word-break: break-word; }
+
+        /* General Modals & Overlays */
+        .editable-image-container { position: relative; width: 100%; height: 100%; cursor: pointer; border-radius: inherit; }
+        .editable-image-container::after { content: '✨ Trasforma Immagine'; position: absolute; inset: 0; background: rgba(26, 11, 46, 0.7); color: var(--accent-gold); display: flex; justify-content: center; align-items: center; font-family: 'Cinzel', serif; font-weight: bold; font-size: 1.2rem; opacity: 0; transition: opacity 0.3s; z-index: 10; backdrop-filter: blur(2px); border-radius: inherit; border: 1px solid var(--accent-gold);}
+        .editable-image-container:hover::after { opacity: 1; }
+        
+        @media print {
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            body, html { background: white !important; margin: 0 !important; padding: 0 !important; width: 100% !important; height: auto !important; overflow: visible !important; }
+            header, .w-\[360px\], #toolbar, #toast-container, .modal { display: none !important; }
+            #editorContainer, #editorWorkspace { padding: 0 !important; margin: 0 !important; height: auto !important; overflow: visible !important; display: block !important; background: none !important; }
+            #bookPage { gap: 0 !important; display: block !important; }
+            .page-text, .page-bleed { box-shadow: none !important; margin: 0 !important; page-break-after: always !important; break-after: page !important; page-break-inside: avoid !important; break-inside: avoid !important; }
+            .editable-image-container::after { display: none !important; }
+            img { image-rendering: high-quality; max-width: 100%; }
+        }
+
+        .modal { display: none; position: fixed; inset: 0; background: rgba(10, 6, 15, 0.9); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .modal.show { display: flex; }
+        .modal-content { background: var(--bg-panel); border: 1px solid var(--accent-gold); border-radius: 4px; width: 95%; max-width: 1200px; padding: 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 0 50px rgba(212,175,55,0.2); max-height: 95vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #3b2854; padding-bottom: 12px; }
+        .close-modal { cursor: pointer; color: #8a7b65; transition: 0.2s; }
+        .close-modal:hover { color: var(--accent-gold); }
+
+        /* A+ Banners */
+        .aplus-container { display: flex; flex-direction: column; gap: 24px; align-items: center; width: 100%; }
+        .aplus-banner { width: 970px; height: 300px; position: relative; overflow: hidden; display: flex; box-sizing: border-box; flex-shrink: 0; font-family: 'Cinzel', serif;}
+        .editable-text { outline: none; padding: 2px; border-radius: 4px; transition: 0.2s; }
+        .editable-text:hover, .editable-text:focus { background: rgba(212,175,55,0.1); box-shadow: 0 0 0 1px var(--accent-gold); }
+
+        /* Toasts */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; font-family: 'Cinzel', serif;}
+        .toast { background: var(--bg-panel); border-left: 4px solid #8b5cf6; color: var(--text-light); padding: 16px 24px; border-radius: 4px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); font-size: 14px; transform: translateX(120%); transition: transform 0.3s ease-out; display: flex; align-items: center; gap: 12px; border-right: 1px solid #3b2854; border-top: 1px solid #3b2854; border-bottom: 1px solid #3b2854;}
+        .toast.show { transform: translateX(0); }
+        .toast.success { border-left-color: var(--accent-gold); }
+        .toast.warning { border-left-color: #f97316; }
+        .toast.error { border-left-color: #ef4444; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden text-slate-200">
+
+    <header class="bg-[#110b1a] border-b border-[#2a1b3d] p-4 flex justify-between items-center z-20 shrink-0 shadow-md">
+        <h1 class="text-2xl font-bold flex items-center gap-3" style="font-family: 'Cinzel', serif; color: var(--accent-gold);">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+            Mystic Grimoire Studio
+        </h1>
+        <div class="flex items-center gap-3">
+            <div id="headerTrimLabel" class="text-[11px] font-medium bg-[#1a1128] py-1.5 px-3 rounded text-[#8a7b65] border border-[#3b2854] flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span> 6" x 9" Bleed</div>
+            <button id="saveEpubBtn" class="bg-purple-900 hover:bg-purple-800 border border-purple-600 text-white text-sm font-bold py-2 px-4 rounded flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(147,51,234,0.4)]" style="font-family: 'Cinzel', serif;">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg> Esporta EPUB
+            </button>
+            <button id="savePdfBtn" class="bg-[#d4af37] hover:bg-[#b5952f] text-black text-sm font-bold py-2 px-4 rounded flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(212,175,55,0.4)]" style="font-family: 'Cinzel', serif;">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg> Stampa PDF
+            </button>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
+        <div class="w-[360px] border-r border-[#2a1b3d] flex flex-col shrink-0 z-10" style="background-color: var(--bg-panel);">
+            <div class="p-5 overflow-y-auto flex-1 custom-scrollbar">
+                
+                <div class="mb-4 bg-[#110b1a] p-3 rounded border border-purple-900/50">
+                    <label class="block text-[10px] font-bold text-purple-400 mb-1 uppercase tracking-wider" style="font-family: 'Cinzel', serif;">Gemini API Key</label>
+                    <input type="password" id="apiKeyInput" class="w-full p-2 bg-[#0a060f] border border-[#3b2854] rounded text-xs outline-none focus:border-[#d4af37]" placeholder="Inserisci chiave per l'Evocazione" style="color: var(--text-light);">
+                </div>
+
+                <div class="bg-[#150e1f] rounded-lg p-5 mb-4 border border-[#3b2854]">
+                    <h3 class="font-semibold mb-4 flex items-center gap-2 text-sm uppercase tracking-wider" style="color: var(--accent-gold); font-family: 'Cinzel', serif;">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                        Parametri del Tomo
+                    </h3>
+                    
+                    <div class="mb-4">
+                        <label class="block text-xs font-medium text-[#8a7b65] mb-1.5" style="font-family: 'Cinzel', serif;">Categoria Magica</label>
+                        <select id="grimoireCategory" class="w-full p-2.5 bg-[#0a060f] border border-[#3b2854] rounded outline-none text-sm cursor-pointer focus:ring-1 focus:ring-[#d4af37] transition-all" style="color: var(--text-light);">
+                            <option value="Ricettario della strega: piante officinali" selected>Ricettario Strega (Piante Officinali)</option>
+                            <option value="Ricettario della strega: ingredienti normali">Ricettario Strega (Ingredienti Comuni)</option>
+                            <option value="Ricettario della strega: ingredienti molto ricercati e rari">Ricettario Strega (Ingredienti Rari/Oscuri)</option>
+                            <option value="Grimorio Incantesimi: pietre e cristalli">Grimorio Incantesimi (Pietre e Cristalli)</option>
+                            <option value="Grimorio Incantesimi: erbe e carte">Grimorio Incantesimi (Erbe e Divinazione)</option>
+                            <option value="Grimorio Incantesimi: magia degli elementi">Grimorio Incantesimi (Magia Elementale)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-xs font-medium text-[#8a7b65] mb-1.5" style="font-family: 'Cinzel', serif;">Tradizione / Path</label>
+                        <select id="magicTradition" class="w-full p-2.5 bg-[#0a060f] border border-[#3b2854] rounded outline-none text-sm cursor-pointer focus:ring-1 focus:ring-[#d4af37] transition-all" style="color: var(--text-light);">
+                            <option value="Wicca" selected>Wicca / Neo-Paganesimo</option>
+                            <option value="Druidica / Celtica">Druidica / Magia Celtica</option>
+                            <option value="Antica Grecia / Ellenismo">Antica Grecia / Ellenismo</option>
+                            <option value="Antico Egitto / Kemetismo">Antico Egitto / Kemetismo</option>
+                            <option value="Esoterismo Cattolico / Folk Magic">Folk Magic Cattolica (Santi, Salmi)</option>
+                            <option value="Esoterismo Protestante">Misticismo Protestante / Hoodoo base</option>
+                            <option value="Esoterismo Islamico / Sufi">Misticismo Islamico / Sufismo</option>
+                            <option value="Magia Buddista / Tantra">Esoterismo Buddista / Tantra</option>
+                            <option value="Magia Induista / Mantra">Esoterismo Induista / Mantra</option>
+                            <option value="Caos Magick">Chaos Magick / Libera</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-xs font-medium text-[#8a7b65] mb-1.5" style="font-family: 'Cinzel', serif;">Intento / Scopo del Tomo</label>
+                        <textarea id="bookTopic" class="w-full h-12 p-3 bg-[#0a060f] border border-[#3b2854] rounded focus:ring-1 focus:ring-[#d4af37] outline-none text-sm resize-none" placeholder="es. 'Incantesimi di Protezione per la casa'" style="color: var(--text-light);"></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-xs font-medium text-[#8a7b65] mb-1.5" style="font-family: 'Cinzel', serif;">Lista Incantesimi Esatta (Opzionale)</label>
+                        <textarea id="customRecipeList" class="w-full h-16 p-3 bg-[#0a060f] border border-[#3b2854] rounded focus:ring-1 focus:ring-[#d4af37] outline-none text-sm resize-none" placeholder="es. 'Sigillo del Fuoco, Pozione Lunare, Scudo Rifllettente'" style="color: var(--text-light);"></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 mb-4">
+                        <div>
+                            <label class="block text-xs font-medium text-[#8a7b65] mb-1.5" style="font-family: 'Cinzel', serif;">N. Rituali</label>
+                            <input type="number" id="recipeCount" value="2" min="1" max="100" class="w-full p-2.5 bg-[#0a060f] border border-[#3b2854] rounded outline-none text-sm" style="color: var(--text-light);">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-[#8a7b65] mb-1.5" style="font-family: 'Cinzel', serif;">Durata / Livello</label>
+                            <input type="text" id="servingsCount" value="1 Ciclo Lunare" class="w-full p-2.5 bg-[#0a060f] border border-[#3b2854] rounded outline-none text-sm" style="color: var(--text-light);">
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-xs font-medium text-[#d4af37] mb-1.5" style="font-family: 'Cinzel', serif;">Stile Illustrazioni (Estetica)</label>
+                        <textarea id="visualSetting" class="w-full h-16 p-3 bg-[#0a060f] border border-[#d4af37] rounded focus:ring-1 focus:ring-[#d4af37] outline-none text-sm resize-none" placeholder="es. 'Ancient manuscript style, charcoal sketches, dark academia, mystic lighting'" style="color: var(--text-light);">Ancient manuscript style, vintage botanical and crystal sketches, dark academia, esoteric</textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-xs font-medium text-purple-400 mb-1.5" style="font-family: 'Cinzel', serif;">Istruzioni Proibite / Regole</label>
+                        <textarea id="bookStyle" class="w-full h-12 p-3 bg-[#0a060f] border border-[#3b2854] rounded focus:ring-1 focus:ring-purple-500 outline-none text-sm resize-none" placeholder="es. 'Usa un tono oscuro, scrivi in rima, non usare sangue'" style="color: var(--text-light);"></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="flex justify-between items-end mb-1.5">
+                            <label class="block text-xs font-medium text-[#8a7b65]" style="font-family: 'Cinzel', serif;">Lingua del Tomo</label>
+                            <button id="btnLiveTranslate" class="text-[10px] bg-purple-900 hover:bg-purple-800 text-white px-2 py-1 rounded flex items-center gap-1 transition-all shadow" title="Traduci il libro generato piano piano">
+                                Transmuta
+                            </button>
+                        </div>
+                        <select id="bookLanguage" class="w-full p-2.5 bg-[#0a060f] border border-[#3b2854] rounded outline-none text-sm cursor-pointer focus:ring-1 focus:ring-purple-500 transition-all" style="color: var(--text-light);">
+                            <option value="Italiano" selected>Italiano</option>
+                            <option value="English (US)">English (US)</option>
+                            <option value="Deutsch">Deutsch</option>
+                            <option value="Français">Français</option>
+                            <option value="Español">Español</option>
+                            <option value="Latin">Latino (Arcano)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="block text-xs font-medium text-[#8a7b65] mb-1.5" style="font-family: 'Cinzel', serif;">Gabbia (Trim Size)</label>
+                        <select id="trimSize" class="w-full p-2.5 bg-[#0a060f] border border-[#3b2854] rounded outline-none text-sm cursor-pointer focus:ring-1 focus:ring-[#d4af37] transition-all" style="color: var(--text-light);">
+                            <option value="5x8">5 x 8 in. (Manuale tascabile)</option>
+                            <option value="6x9">6 x 9 in. (Grimorio Standard)</option>
+                            <option value="7x10">7 x 10 in. (Tomo Medio)</option>
+                            <option value="8.5x11" selected>8.5 x 11 in. (Tomo Maestro)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button id="btnStartAutoPilot" class="w-full bg-gradient-to-r from-[#d4af37] to-[#b5952f] hover:from-[#b5952f] hover:to-[#967922] text-[#0a060f] font-bold py-3.5 rounded shadow-[0_0_15px_rgba(212,175,55,0.4)] transition-all flex justify-center items-center gap-2 mb-4 disabled:opacity-50" style="font-family: 'Cinzel', serif;">
+                    <span id="btnStartText" class="flex items-center gap-2">Evoca il Grimorio</span>
+                    <span id="btnStartLoader" class="hidden"><div class="loader border-[#0a060f] border-top-[#fff]"></div> Evocazione in corso...</span>
+                </button>
+
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <button id="btnSaveProject" class="bg-[#150e1f] hover:bg-[#2a1b3d] text-[#8a7b65] border border-[#3b2854] font-bold py-2.5 rounded shadow transition-all flex flex-col justify-center items-center gap-1 text-[11px]" title="Salva il progetto sul PC">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg> Sigilla
+                    </button>
+                    <button id="btnLoadProject" class="bg-[#150e1f] hover:bg-[#2a1b3d] text-[#8a7b65] border border-[#3b2854] font-bold py-2.5 rounded shadow transition-all flex flex-col justify-center items-center gap-1 text-[11px]" title="Carica un progetto dal PC">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg> Risveglia
+                    </button>
+                    <input type="file" id="fileLoadProject" accept=".kdp" class="hidden">
+                    <button id="btnOpenAPlusModal" class="bg-[#150e1f] hover:bg-[#2a1b3d] text-purple-400 border border-purple-900/50 font-bold py-2.5 rounded shadow transition-all flex flex-col justify-center items-center gap-1 text-[11px]">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"></path></svg> A+ Studio
+                    </button>
+                    <button id="btnResetProject" class="bg-red-900/20 hover:bg-red-900/40 text-red-400 border border-red-900/50 font-bold py-2.5 rounded shadow transition-all flex flex-col justify-center items-center gap-1 text-[11px]" title="Azzera tutto il progetto">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg> Purifica
+                    </button>
+                </div>
+
+                <div id="progressSection" class="flex-col gap-4 bg-[#0a060f] p-4 rounded border border-[#3b2854] shadow-inner hidden">
+                    <div class="flex justify-between text-xs mb-1 text-[#8a7b65]">
+                        <span id="progressStatus" class="truncate max-w-[200px] font-medium" style="color: var(--accent-gold);">Tomo Scritto!</span>
+                        <span id="progressCount" class="font-mono">15/15</span>
+                    </div>
+                    <div class="w-full bg-[#1a1128] rounded-full h-1.5">
+                        <div id="progressBar" class="bg-[#d4af37] h-1.5 rounded-full transition-all duration-300" style="width: 100%; box-shadow: 0 0 10px rgba(212,175,55,0.8);"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="editorContainer">
+            <div id="toolbar">
+                <div class="toolbar-group">
+                    <button class="tool-btn" title="Riduci Font" onclick="adjustFontSize(-1)"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path></svg></button>
+                    <button class="tool-btn" title="Aumenta Font" onclick="adjustFontSize(1)"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg></button>
+                </div>
+                <div class="toolbar-group">
+                    <button class="tool-btn" title="Grassetto" onclick="document.execCommand('bold', false, null)"><span class="font-bold text-sm" style="font-family: 'Cinzel', serif;">B</span></button>
+                    <button class="tool-btn" title="Corsivo" onclick="document.execCommand('italic', false, null)"><span class="italic text-sm">I</span></button>
+                </div>
+                <div class="text-xs text-[#8a7b65] font-medium ml-4">Evidenzia il testo per formattare. Clicca un'illustrazione per alterarla.</div>
+            </div>
+
+            <div id="editorWorkspace">
+                <div id="bookPage" contenteditable="true" spellcheck="false">
+                    <!-- Placeholder Magico Iniziale -->
+                    <div class="page-text" style="justify-content: center; align-items: center;" id="welcomePlaceholder">
+                        <h1 class="doc-title" style="color: #2c1b4d; border-bottom: 2px solid #d4af37; padding-bottom: 20px;">Grimorium Verum</h1>
+                        <p style="color: #5a4b41; font-size: calc(14pt * var(--font-scale)); margin-top: 20px; font-style: italic;">Inizia l'evocazione dal pannello oscuro.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals (Regen, A+, Reset) -->
+    <div id="regenModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <h2 class="text-lg text-[#d4af37]" style="font-family: 'Cinzel', serif;">Trasmutazione Visiva</h2>
+            <p class="text-xs text-[#8a7b65] mb-2">Includi dettagli arcani (es. "Aggiungi cristalli viola") o lascia vuoto per magia caotica.</p>
+            <textarea id="regenPrompt" class="w-full h-24 p-3 bg-[#0a060f] border border-[#3b2854] rounded text-sm text-[#eaddcf] outline-none resize-none"></textarea>
+            <div class="flex justify-end gap-3 mt-4">
+                <button id="closeRegenModal" class="px-4 py-2 text-[#8a7b65] hover:text-[#d4af37] transition" style="font-family: 'Cinzel', serif;">Annulla</button>
+                <button id="btnConfirmRegen" class="bg-purple-900 hover:bg-purple-800 text-white font-bold py-2 px-6 rounded flex items-center gap-2 shadow border border-purple-600">
+                    <span id="btnRegenText" style="font-family: 'Cinzel', serif;">Trasmuta</span><div id="btnRegenLoader" class="loader hidden"></div>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="aplusModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="text-xl text-[#d4af37] flex items-center gap-2" style="font-family: 'Cinzel', serif;"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"></path></svg> A+ Content (Arcane Display)</h2>
+                <div class="flex gap-3">
+                    <button id="btnRegenerateAPlus" class="bg-[#2a1b3d] hover:bg-[#3b2854] text-white text-sm px-4 py-2 rounded transition-all flex items-center gap-2 shadow border border-[#3b2854]">
+                        <span id="btnRegenAPlusText">Evoca Testi</span><div id="btnRegenAPlusLoader" class="loader hidden"></div>
+                    </button>
+                    <button id="btnDownloadAPlus" class="bg-[#d4af37] hover:bg-[#b5952f] text-black text-sm font-bold px-4 py-2 rounded shadow flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Scarica Pergamene
+                    </button>
+                    <svg class="w-6 h-6 close-modal ml-2 mt-1" id="closeAPlusModal" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </div>
+            </div>
+            <p class="text-xs text-[#8a7b65] mb-1 text-center">Banner 970x300. Generazione di mockups 3D del tuo grimorio.</p>
+            <div class="aplus-container overflow-y-auto pb-4" id="aplusBannersContainer"></div>
+        </div>
+    </div>
+
+    <div id="resetConfirmModal" class="modal">
+        <div class="modal-content" style="max-width: 400px; text-align: center; border-color: #7f1d1d;">
+            <h2 class="text-xl font-serif text-red-400 mb-2 flex justify-center items-center gap-2" style="font-family: 'Cinzel', serif;">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg> Attenzione!
+            </h2>
+            <p class="text-sm text-[#eaddcf] mb-6">Vuoi disperdere le ceneri di questo tomo? Tutte le pagine non sigillate andranno perse nell'oblio.</p>
+            <div class="flex justify-center gap-3">
+                <button id="btnCancelReset" class="px-5 py-2.5 text-[#8a7b65] hover:text-white bg-[#150e1f] hover:bg-[#2a1b3d] rounded transition font-medium text-sm">Annulla</button>
+                <button id="btnConfirmReset" class="bg-red-900 hover:bg-red-800 border border-red-600 text-white font-bold py-2.5 px-5 rounded shadow flex items-center gap-2 text-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg> Purifica
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script>
+        const DOM = {
+            btnStart: document.getElementById('btnStartAutoPilot'), btnText: document.getElementById('btnStartText'), btnLoader: document.getElementById('btnStartLoader'),
+            topicInput: document.getElementById('bookTopic'), styleInput: document.getElementById('bookStyle'), languageInput: document.getElementById('bookLanguage'), countInput: document.getElementById('recipeCount'), trimSize: document.getElementById('trimSize'),
+            grimoireCategory: document.getElementById('grimoireCategory'), magicTradition: document.getElementById('magicTradition'),
+            bookPage: document.getElementById('bookPage'), apiKeyInput: document.getElementById('apiKeyInput'),
+            customRecipeList: document.getElementById('customRecipeList'), servingsCount: document.getElementById('servingsCount'), visualSetting: document.getElementById('visualSetting'),
+            savePdfBtn: document.getElementById('savePdfBtn'), saveEpubBtn: document.getElementById('saveEpubBtn'), btnLiveTranslate: document.getElementById('btnLiveTranslate'),
+            btnSaveProject: document.getElementById('btnSaveProject'), btnLoadProject: document.getElementById('btnLoadProject'), fileLoadProject: document.getElementById('fileLoadProject'),
+            progressSection: document.getElementById('progressSection'), progressStatus: document.getElementById('progressStatus'), progressCount: document.getElementById('progressCount'), progressBar: document.getElementById('progressBar'),
+            toastContainer: document.getElementById('toast-container'),
+            regenModal: document.getElementById('regenModal'), closeRegenModal: document.getElementById('closeRegenModal'), btnConfirmRegen: document.getElementById('btnConfirmRegen'), regenPrompt: document.getElementById('regenPrompt'), btnRegenText: document.getElementById('btnRegenText'), btnRegenLoader: document.getElementById('btnRegenLoader'),
+            btnOpenAPlusModal: document.getElementById('btnOpenAPlusModal'), aplusModal: document.getElementById('aplusModal'), closeAPlusModal: document.getElementById('closeAPlusModal'),
+            btnRegenerateAPlus: document.getElementById('btnRegenerateAPlus'), btnRegenAPlusText: document.getElementById('btnRegenAPlusText'), btnRegenAPlusLoader: document.getElementById('btnRegenAPlusLoader'), btnDownloadAPlus: document.getElementById('btnDownloadAPlus'), aplusBannersContainer: document.getElementById('aplusBannersContainer'),
+            btnResetProject: document.getElementById('btnResetProject'), resetConfirmModal: document.getElementById('resetConfirmModal'), btnCancelReset: document.getElementById('btnCancelReset'), btnConfirmReset: document.getElementById('btnConfirmReset')
+        };
+
+        const getAPIKey = () => DOM.apiKeyInput.value.trim() || "";
+        let generatedImages = [];
+        let imageToRegenerate = null, basePromptForRegen = "";
+        let globalTocEntries = [];
+
+        // Updated i18n for Magic/Grimoire context
+        const i18n = {
+            "English (US)": { prep: "Preparation", cook: "Casting Time", diff: "Level", serv: "Duration/Target", nut: "Arcane Properties", ingr: "Materia Magica", step: "Phase", toc: "Index of Shadows", cal: "Energy Cost", pro: "Element", carb: "Moon Phase", fat: "Planetary Hour", ca: "Zodiac", vitd: "Deity/Entity", mag: "Chakra/Center", perServing: "Ritual Specs" },
+            "Italiano": { prep: "Preparazione", cook: "Tempo di Lancio", diff: "Livello", serv: "Durata/Bersaglio", nut: "Proprietà Arcane", ingr: "Materia Magica", step: "Fase", toc: "Indice del Tomo", cal: "Costo Energetico", pro: "Elemento", carb: "Fase Lunare", fat: "Ora Planetaria", ca: "Zodiaco", vitd: "Entità Invocata", mag: "Chakra/Centro", perServing: "Specifiche" },
+            "Español": { prep: "Preparación", cook: "Tiempo de Lanzamiento", diff: "Nivel", serv: "Duración", nut: "Propiedades Arcanas", ingr: "Materia Mágica", step: "Fase", toc: "Índice", cal: "Costo Energético", pro: "Elemento", carb: "Fase Lunar", fat: "Hora Planetaria", ca: "Zodiaco", vitd: "Entidad", mag: "Chakra", perServing: "Especificaciones" },
+            "Français": { prep: "Préparation", cook: "Temps d'incantation", diff: "Niveau", serv: "Durée", nut: "Propriétés Arcaniques", ingr: "Composants", step: "Phase", toc: "Index", cal: "Coût Énergétique", pro: "Élément", carb: "Phase Lunaire", fat: "Heure Planétaire", ca: "Zodiaque", vitd: "Entité", mag: "Chakra", perServing: "Spécifications" },
+            "Deutsch": { prep: "Vorbereitung", cook: "Wirkzeit", diff: "Stufe", serv: "Dauer", nut: "Arkane Eigenschaften", ingr: "Magische Materie", step: "Phase", toc: "Inhaltsverzeichnis", cal: "Energiekosten", pro: "Element", carb: "Mondphase", fat: "Planetenstunde", ca: "Tierkreis", vitd: "Entität", mag: "Chakra", perServing: "Spezifikationen" },
+            "Latin": { prep: "Praeparatio", cook: "Tempus Incantationis", diff: "Gradus", serv: "Duratio", nut: "Artes Magicae", ingr: "Materia Magica", step: "Gradus", toc: "Index Rerum", cal: "Vis Necessaria", pro: "Elementum", carb: "Fasis Lunae", fat: "Hora Planetaria", ca: "Zodiacus", vitd: "Nomen Divinum", mag: "Centrum", perServing: "Signacula" }
+        };
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            let icon = type === 'success' ? '✨' : type === 'warning' ? '🔥' : type === 'error' ? '💀' : '🔮';
+            toast.innerHTML = `<span style="font-size: 1.2rem">${icon}</span> <span>${message}</span>`;
+            DOM.toastContainer.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 5000);
+        }
+
+        function updateStatus(msg, percent = null, current = null, total = null) {
+            DOM.progressStatus.textContent = msg;
+            if(percent !== null) DOM.progressBar.style.width = `${percent}%`;
+            if(current !== null && total !== null) DOM.progressCount.textContent = `${current}/${total}`;
+        }
+        
+        const delay = ms => new Promise(res => setTimeout(res, ms));
+
+        function extractJSON(text) {
+            try {
+                let s = text.indexOf('{'); let b = text.indexOf('[');
+                let start = (s !== -1 && b !== -1) ? Math.min(s, b) : (s !== -1 ? s : b);
+                if (start !== -1) {
+                    let endChar = text[start] === '{' ? '}' : ']';
+                    let end = text.lastIndexOf(endChar);
+                    if (end !== -1) return JSON.parse(text.substring(start, end + 1));
+                }
+                return JSON.parse(text); 
+            } catch(e) { throw new Error("Lettura delle rune fallita (JSON error)."); }
+        }
+
+        const fetchWithRetry = async (urlGenerator, optionsGenerator, maxRetries = 5) => {
+            for (let retries = 0; retries < maxRetries; retries++) {
+                try {
+                    const response = await fetch(urlGenerator(), optionsGenerator());
+                    if (!response.ok) {
+                        const err = await response.json().catch(()=>({}));
+                        if (response.status === 400 && err.error?.message?.includes("API key not valid")) throw new Error("Chiave di Evocazione (API Key) errata.");
+                        if (response.status === 429 || response.status === 500) throw new Error("Energie disturbate (Rate limit / Server).");
+                        throw new Error(`Errore Arcano HTTP ${response.status}`);
+                    }
+                    return response;
+                } catch (error) {
+                    if(error.message.includes("API Key") || retries === maxRetries - 1) throw error;
+                    updateStatus(`Fluttuazioni magiche. Ritento in ${5 * (retries + 1)}s...`);
+                    await delay(5000 * (retries + 1)); 
+                }
+            }
+        };
+
+        async function callGemini(prompt, systemInstruction) {
+            const urlGen = () => `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${getAPIKey()}`;
+            const optGen = () => ({
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                    generationConfig: { temperature: 0.8, responseMimeType: "application/json" },
+                    systemInstruction: { parts: [{ text: systemInstruction }] }
+                })
+            });
+            const response = await fetchWithRetry(urlGen, optGen);
+            const data = await response.json();
+            return extractJSON(data.candidates[0].content.parts[0].text);
+        }
+
+        async function callGeminiImage(prompt, aspect, maxWidth = 1000, quality = 0.85) {
+            // Updated safety append for esoteric/mystical illustrations
+            const safetyAppend = ". Exquisitely detailed vintage book illustration style, esoteric, occult, magical grimoire aesthetic, dark academia, parchment background feel, mystical lighting, NO text, NO letters, NO modern elements.";
+            const urlGen = () => `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${getAPIKey()}`;
+            const optGen = () => ({
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ role: 'user', parts: [{ text: prompt + safetyAppend }] }], 
+                    generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: aspect } }
+                })
+            });
+            try {
+                const response = await fetchWithRetry(urlGen, optGen);
+                const data = await response.json();
+                const part = data.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+                if (part) return await processImageToBlobUrl(`data:${part.inlineData.mimeType};base64,${part.inlineData.data}`, maxWidth, quality); 
+            } catch(e) { console.warn("Image gen failed:", e); }
+            return null;
+        }
+
+        async function processImageToBlobUrl(base64Str, maxWidth = 2400, quality = 0.85) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let w = img.width, h = img.height;
+                    if (w > maxWidth) { h = Math.round((h * maxWidth) / w); w = maxWidth; }
+                    canvas.width = w; canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
+                    
+                    // Add a subtle parchment/sepia overlay for consistency
+                    ctx.fillStyle = "rgba(212, 175, 55, 0.05)";
+                    ctx.fillRect(0,0,w,h);
+                    
+                    canvas.toBlob(blob => { canvas.width = 0; canvas.height = 0; resolve(URL.createObjectURL(blob)); }, 'image/jpeg', quality);
+                };
+                img.onerror = () => resolve(base64Str);
+                img.src = base64Str;
+            });
+        }
+
+        function applyLayoutEngine() {
+            const val = DOM.trimSize.value;
+            const [wStr, hStr] = val.split('x');
+            const widthIn = parseFloat(wStr); 
+            const heightIn = parseFloat(hStr);
+            let fontScale = heightIn >= 10 ? 1.0 : (widthIn <= 5.5 ? 0.75 : 0.85);
+
+            document.documentElement.style.setProperty('--page-width-px', `${widthIn * 96}px`);
+            document.documentElement.style.setProperty('--page-height-px', `${heightIn * 96}px`);
+            document.documentElement.style.setProperty('--font-scale', fontScale);
+
+            document.getElementById('dynamicPrintStyle').innerHTML = `@media print { @page { size: ${widthIn}in ${heightIn}in; margin: 0 !important; } .page-text, .page-bleed { width: ${widthIn}in !important; height: ${heightIn}in !important; overflow: hidden !important; } }`;
+            document.getElementById('headerTrimLabel').innerHTML = `<span class="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span> ${widthIn}" x ${heightIn}" Bleed`;
+            
+            return { widthIn, heightIn, isLarge: heightIn >= 10 };
+        }
+        DOM.trimSize.addEventListener('change', applyLayoutEngine);
+
+        function adjustFontSize(delta) {
+            const selection = window.getSelection();
+            if (!selection.rangeCount || selection.isCollapsed) return;
+            let node = selection.focusNode;
+            if (node.nodeType === 3) node = node.parentElement;
+            if (node.id === 'bookPage' || node.classList.contains('page-text')) {
+                document.execCommand('fontSize', false, '7'); 
+                const spans = document.getElementsByTagName("font");
+                for(let span of spans) { if(span.size === "7") { span.removeAttribute("size"); span.style.fontSize = "16pt"; } }
+                return;
+            }
+            node.style.fontSize = (parseFloat(window.getComputedStyle(node).fontSize) + delta) + 'px';
+        }
+
+        function wrapImageForEdit(imgHtml, originalPrompt) {
+            return `<div class="editable-image-container" data-prompt="${originalPrompt.replace(/"/g, '&quot;')}" onclick="openRegenModal(this)">${imgHtml}</div>`;
+        }
+
+        window.openRegenModal = function(container) {
+            imageToRegenerate = container.querySelector('img');
+            basePromptForRegen = container.dataset.prompt;
+            DOM.regenPrompt.value = "";
+            DOM.regenModal.classList.add('show');
+        }
+        DOM.closeRegenModal.addEventListener('click', () => DOM.regenModal.classList.remove('show'));
+        
+        DOM.btnConfirmRegen.addEventListener('click', async () => {
+            const modifier = DOM.regenPrompt.value.trim();
+            const finalPrompt = modifier ? `${basePromptForRegen}. Ensure focus on this detail: ${modifier}` : basePromptForRegen;
+            DOM.btnRegenText.classList.add('hidden'); DOM.btnRegenLoader.classList.remove('hidden'); DOM.btnConfirmRegen.disabled = true;
+            try {
+                const aspect = imageToRegenerate.classList.contains('step-img-small') ? '1:1' : (imageToRegenerate.parentElement.classList.contains('page-bleed') ? '16:9' : '3:4');
+                const resolution = imageToRegenerate.classList.contains('step-img-small') ? 1000 : 2400;
+                const newImgUrl = await callGeminiImage(finalPrompt, aspect, resolution, 0.9);
+                if(newImgUrl) { imageToRegenerate.src = newImgUrl; showToast("Illusione rinnovata!", "success"); }
+                else { showToast("Immagine non evocabile.", "warning"); }
+            } catch(e) { showToast(e.message, "error"); } finally {
+                DOM.btnRegenText.classList.remove('hidden'); DOM.btnRegenLoader.classList.add('hidden'); DOM.btnConfirmRegen.disabled = false;
+                DOM.regenModal.classList.remove('show');
+            }
+        });
+
+        DOM.btnStart.addEventListener('click', async () => {
+            const topic = DOM.topicInput.value.trim(); 
+            const lang = DOM.languageInput.value; 
+            const category = DOM.grimoireCategory.value;
+            const tradition = DOM.magicTradition.value;
+            const numRecipes = parseInt(DOM.countInput.value);
+            const customList = DOM.customRecipeList.value.trim();
+            const servingsCount = DOM.servingsCount.value || "1 Ciclo Lunare";
+            const visualSetting = DOM.visualSetting.value.trim();
+            
+            if(!topic && !customList) return showToast("Dichiara un Intento o una Lista di Incantesimi.", "warning");
+
+            DOM.btnStart.disabled = true; DOM.btnText.classList.add('hidden'); DOM.btnLoader.classList.remove('hidden');
+            DOM.progressSection.classList.remove('hidden');
+            
+            DOM.bookPage.innerHTML = `<div class="page-text" style="justify-content: center; align-items: center;" id="welcomePlaceholder"><h1 class="doc-title" style="color: #2c1b4d; border-bottom: 2px solid #d4af37; padding-bottom: 20px;">Grimorium Verum</h1><p style="color: #5a4b41; font-size: calc(14pt * var(--font-scale)); margin-top: 20px; font-style: italic;">Le pagine si stanno scrivendo da sole...</p></div>`; 
+            
+            generatedImages = []; globalTocEntries = []; let currentPhysicalPage = 1; 
+            const layoutInfo = applyLayoutEngine(); 
+            const stepsPerPage = 3; 
+            const totalStepsRequired = 9; 
+            const labels = i18n[lang] || i18n["Italiano"];
+            
+            const specificInstructions = DOM.styleInput.value.trim();
+            const instructionInjection = specificInstructions ? ` CRITICAL RULES: ${specificInstructions}.` : "";
+            const visualSettingPrompt = visualSetting ? `. CRITICAL VISUAL REQUIREMENT: Set all image prompts in this exact aesthetic: "${visualSetting}".` : '';
+
+            try {
+                updateStatus(`Canalizzazione Indice in ${lang}...`, 5);
+                
+                let recipeArray = [];
+                if (customList) {
+                    recipeArray = customList.split(',').map(s => s.trim()).filter(s => s);
+                } else {
+                    const tocSys = `You are an ancient esoteric master of the ${tradition} tradition. 
+CRITICAL LANGUAGE: Output ALL spell/ritual titles 100% strictly in ${lang.toUpperCase()}. No English allowed.
+Return ONLY a valid JSON array of strings containing highly atmospheric, esoteric, and mysterious titles for spells/rituals. They must fit the category: "${category}".${instructionInjection}`;
+                    recipeArray = await callGemini(`Generate exactly ${numRecipes} unique ritual/spell names in ${lang.toUpperCase()} for a grimoire themed: "${topic}". JSON array only.`, tocSys);
+                }
+
+                for(let i = 0; i < recipeArray.length; i++) {
+                    const rName = recipeArray[i];
+                    updateStatus(`Trascrizione: ${rName}...`, ((i)/recipeArray.length)*100, i+1, recipeArray.length);
+                    
+                    try {
+                        const recipeSys = `You are a master occultist and scribe of the ${tradition} path.
+CRITICAL LANGUAGE REQUIREMENT: 100% of narrative text, descriptions, components, labels and steps MUST be written STRICTLY in ${lang.toUpperCase()}. No English allowed (except for image prompts).
+Write a ritual/spell fitting the category "${category}". Treat real-world religions with deep historical/mystical respect.
+
+CRITICAL STEPS: Provide EXACTLY ${totalStepsRequired} steps.
+${visualSettingPrompt}
+${instructionInjection}
+
+Schema:
+{ 
+  "description": "Mystical description/blurb in ${lang.toUpperCase()}.", 
+  "labels": { "prepTime": "15m", "cookTime": "1 Hour", "difficulty": "Initiate/Adept", "servings": "${servingsCount}" },
+  "nutrition": { "calories": "High/Low", "protein": "Fire/Water/Earth/Air", "carbs": "Full Moon/Waning", "fat": "Midnight/Dawn", "calcium": "Aries/Taurus", "vitD": "Archangel/Deity/Spirit", "magnesium": "Heart/Root/Crown" },
+  "ingredients": ["3 leaves of...", "1 piece of clear quartz..."], 
+  "steps": [ { "title": "Step title in ${lang.toUpperCase()}", "instruction": "Clear ritual action in ${lang.toUpperCase()}.", "imagePrompt": "Action visual prompt in ENGLISH." } ], 
+  "visualPromptFinished": "The final glowing/active spell or altar setup, beautifully illustrated, ENGLISH.",
+  "visualPromptIngredients": "Raw magical components (herbs, stones, candles) arranged beautifully on an altar, overhead flatlay shot, ENGLISH."
+}`;
+                        const rData = await callGemini(`Write full grimoire entry for "${rName}". Exactly ${totalStepsRequired} steps. Target/Duration: ${servingsCount}. Language: ${lang}. Output strictly valid JSON.`, recipeSys);
+
+                        // Page 1: Bleed Photo (Finished Spell)
+                        currentPhysicalPage++; 
+                        updateStatus(`Illustrazione Magica: ${rName}...`, null, i+1, recipeArray.length);
+                        const imgFin = await callGeminiImage(rData.visualPromptFinished, layoutInfo.widthIn > layoutInfo.heightIn ? '16:9' : '3:4', 2400, 0.9);
+                        if(imgFin) generatedImages.push({url: imgFin, title: rName});
+                        const imgFallback = imgFin || `https://placehold.co/800/1a1128/d4af37?text=${encodeURIComponent('Arcane Image')}`;
+                        DOM.bookPage.insertAdjacentHTML('beforeend', `<div class="page-bleed recipe-block" data-recipe-id="${i}">${wrapImageForEdit(`<img src="${imgFallback}" alt="Spell Visual" />`, rData.visualPromptFinished)}</div>`);
+                        await delay(3500); 
+
+                        // Page 2: Title, Blurb & Arcane Attributes
+                        currentPhysicalPage++; 
+                        globalTocEntries.push({ title: rName, pageNum: currentPhysicalPage }); 
+                        DOM.bookPage.insertAdjacentHTML('beforeend', `
+                            <div class="page-text recipe-block" data-recipe-id="${i}" style="justify-content: flex-start; padding-top: calc(var(--safe-margin-px) * 1.5);">
+                                <h1 class="doc-h1">${rName}</h1>
+                                <p class="doc-quote">"${rData.description}"</p>
+                                
+                                <div class="recipe-meta-bar">
+                                    <div class="meta-item"><span class="meta-val prep-val">${rData.labels.prepTime}</span><span class="meta-lbl lbl-prep">${labels.prep}</span></div>
+                                    <div class="meta-item"><span class="meta-val cook-val">${rData.labels.cookTime}</span><span class="meta-lbl lbl-cook">${labels.cook}</span></div>
+                                    <div class="meta-item"><span class="meta-val diff-val">${rData.labels.difficulty}</span><span class="meta-lbl lbl-diff">${labels.diff}</span></div>
+                                    <div class="meta-item"><span class="meta-val serv-val">${rData.labels.servings}</span><span class="meta-lbl lbl-serv">${labels.serv}</span></div>
+                                </div>
+
+                                <div class="nutrition-panel">
+                                    <div class="nut-header">
+                                        <h3 class="nut-title lbl-nut">${labels.nut}</h3>
+                                        <span class="nut-subtitle lbl-perserving">${labels.perServing}</span>
+                                    </div>
+                                    <div class="nut-row" style="border-bottom: 2px solid #2c1b4d; margin-bottom: 8px; padding-bottom: 8px;">
+                                        <span class="nut-lbl lbl-cal" style="font-weight: 700; color: #2c1b4d;">${labels.cal}</span>
+                                        <span class="nut-val-txt nut-cal" style="font-size: 12pt;">${rData.nutrition.calories}</span>
+                                    </div>
+                                    <div class="nut-grid">
+                                        <div class="nut-row"><span class="nut-lbl lbl-pro">${labels.pro}</span><span class="nut-val-txt nut-pro">${rData.nutrition.protein}</span></div>
+                                        <div class="nut-row"><span class="nut-lbl lbl-ca">${labels.ca}</span><span class="nut-val-txt nut-ca">${rData.nutrition.calcium}</span></div>
+                                        <div class="nut-row"><span class="nut-lbl lbl-carb">${labels.carb}</span><span class="nut-val-txt nut-carb">${rData.nutrition.carbs}</span></div>
+                                        <div class="nut-row"><span class="nut-lbl lbl-vitd">${labels.vitd}</span><span class="nut-val-txt nut-vitd">${rData.nutrition.vitD}</span></div>
+                                        <div class="nut-row"><span class="nut-lbl lbl-fat">${labels.fat}</span><span class="nut-val-txt nut-fat">${rData.nutrition.fat}</span></div>
+                                        <div class="nut-row"><span class="nut-lbl lbl-mag">${labels.mag}</span><span class="nut-val-txt nut-mag">${rData.nutrition.magnesium}</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `);
+
+                        // Page 3: Components Bleed Photo
+                        currentPhysicalPage++;
+                        updateStatus(`Illustrazione Componenti: ${rName}...`, null, i+1, recipeArray.length);
+                        const imgIngr = await callGeminiImage(rData.visualPromptIngredients, layoutInfo.widthIn > layoutInfo.heightIn ? '16:9' : '3:4', 2400, 0.9);
+                        if(imgIngr) generatedImages.push({url: imgIngr, title: rName + " Components"});
+                        const imgIngrFallback = imgIngr || `https://placehold.co/800/1a1128/d4af37?text=${encodeURIComponent('Materia Magica')}`;
+                        DOM.bookPage.insertAdjacentHTML('beforeend', `<div class="page-bleed recipe-block" data-recipe-id="${i}">${wrapImageForEdit(`<img src="${imgIngrFallback}" alt="Ingredients" />`, rData.visualPromptIngredients)}</div>`);
+                        await delay(3500);
+
+                        // Page 4: Ingredients List (2-Col)
+                        currentPhysicalPage++; 
+                        const renderIngCol = (items) => items.map(item => `<div class="ingr-item"><div class="ingr-check"></div><span class="ingr-text">${item}</span></div>`).join('');
+                        DOM.bookPage.insertAdjacentHTML('beforeend', `
+                            <div class="page-text recipe-block" data-recipe-id="${i}">
+                                <div class="ingredients-container">
+                                    <h2 class="doc-h2 lbl-ingr" style="align-self: flex-start;">${labels.ingr}</h2>
+                                    <div class="ingredients-grid-2col">${renderIngCol(rData.ingredients)}</div>
+                                </div>
+                            </div>
+                        `);
+
+                        // Pages 5+: Steps
+                        const totalStepPages = Math.ceil(rData.steps.length / stepsPerPage);
+                        for(let p = 0; p < totalStepPages; p++) {
+                            currentPhysicalPage++;
+                            const sIdx = p * stepsPerPage;
+                            const eIdx = Math.min(sIdx + stepsPerPage, rData.steps.length);
+                            let stepsHtml = '';
+
+                            for(let s = sIdx; s < eIdx; s++) {
+                                updateStatus(`Miniatura Fase ${s+1} (${rName})...`, null, i+1, recipeArray.length);
+                                const imgStep = await callGeminiImage(rData.steps[s].imagePrompt, '1:1', 1000, 0.85);
+                                const imgStepFallback = imgStep || `https://placehold.co/300/1a1128/d4af37?text=${labels.step}+${s+1}`;
+                                stepsHtml += `
+                                    <div class="step-row">
+                                        <div class="step-img-box">${wrapImageForEdit(`<img src="${imgStepFallback}" class="step-img-small" alt="${labels.step}${s+1}" />`, rData.steps[s].imagePrompt)}</div>
+                                        <div class="step-content">
+                                            <h3 class="step-title">${labels.step} ${s+1}: <span class="step-title-text">${rData.steps[s].title}</span></h3>
+                                            <p class="step-desc">${rData.steps[s].instruction}</p>
+                                        </div>
+                                    </div>`;
+                                if (s < eIdx - 1 || p < totalStepPages - 1) await delay(3500); 
+                            }
+
+                            DOM.bookPage.insertAdjacentHTML('beforeend', `
+                                <div class="page-text recipe-block" data-recipe-id="${i}">
+                                    <div class="steps-page-wrapper">
+                                        <div class="steps-header-box"><h2 class="doc-h2">${labels.step} ${sIdx + 1}–${eIdx}</h2></div>
+                                        <div class="steps-grid">${stepsHtml}</div>
+                                    </div>
+                                </div>
+                            `);
+                        }
+                    } catch(err) { showToast(`Malfunzionamento magico: ${rName} - ${err.message}`, "error"); }
+                }
+
+                // Final Page: Table of Contents
+                updateStatus("Scrittura Indice finale...", 98);
+                const colClass = globalTocEntries.length > 20 ? 'toc-3col' : (globalTocEntries.length > 10 ? 'toc-2col' : '');
+                let tocHTML = `<div class="page-text" id="pdfTOC"><h1 class="doc-h1">${labels.toc}</h1><div class="toc-columns ${colClass}">`;
+                globalTocEntries.forEach(e => { tocHTML += `<div class="toc-item"><span class="toc-title" style="background: var(--parchment);">${e.title}</span><div class="toc-leader" style="border-bottom-color: #8a7b65;"></div><span class="toc-page" style="background: var(--parchment); color: #2c1b4d;">${e.pageNum}</span></div>`; });
+                DOM.bookPage.insertAdjacentHTML('beforeend', tocHTML + `</div></div>`);
+                
+                updateStatus("Tomo Completato!", 100, recipeArray.length, recipeArray.length);
+                showToast("Grimorio evocato con successo!", "success");
+            } catch(e) { 
+                showToast(e.message, "error"); 
+            } finally { 
+                DOM.btnStart.disabled = false; DOM.btnText.classList.remove('hidden'); DOM.btnLoader.classList.add('hidden'); 
+                setTimeout(() => DOM.progressSection.classList.add('hidden'), 2000); 
+            }
+        });
+
+        // Translation logic slightly adapted to preserve new colors
+        DOM.btnLiveTranslate.addEventListener('click', async () => {
+            const tLang = DOM.languageInput.value; 
+            const labels = i18n[tLang] || i18n["Italiano"];
+            
+            if(globalTocEntries.length === 0) return showToast("Evoca prima un grimorio da tradurre.", "warning");
+
+            DOM.btnLiveTranslate.disabled = true; DOM.progressSection.classList.remove('hidden');
+
+            for (let i = 0; i < globalTocEntries.length; i++) {
+                updateStatus(`Transmutazione linguistica (${tLang})...`, (i/globalTocEntries.length)*100, i+1, globalTocEntries.length);
+                
+                const pages = Array.from(document.querySelectorAll(`.recipe-block[data-recipe-id="${i}"]`));
+                if(pages.length === 0) continue;
+                pages[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                let titleNode, descNode, prepNode, cookNode, diffNode, servNode;
+                let calNode, proNode, caNode, carbNode, vitdNode, fatNode, magNode;
+                
+                pages.forEach(p => {
+                    if(!titleNode) titleNode = p.querySelector('.doc-h1');
+                    if(!descNode) descNode = p.querySelector('.doc-quote');
+                    if(!prepNode) prepNode = p.querySelector('.prep-val');
+                    if(!cookNode) cookNode = p.querySelector('.cook-val');
+                    if(!diffNode) diffNode = p.querySelector('.diff-val');
+                    if(!servNode) servNode = p.querySelector('.serv-val');
+                    if(!calNode) calNode = p.querySelector('.nut-cal');
+                    if(!proNode) proNode = p.querySelector('.nut-pro');
+                    if(!caNode) caNode = p.querySelector('.nut-ca');
+                    if(!carbNode) carbNode = p.querySelector('.nut-carb');
+                    if(!vitdNode) vitdNode = p.querySelector('.nut-vitd');
+                    if(!fatNode) fatNode = p.querySelector('.nut-fat');
+                    if(!magNode) magNode = p.querySelector('.nut-mag');
+                });
+
+                const rIngrElements = Array.from(document.querySelectorAll(`.recipe-block[data-recipe-id="${i}"] .ingr-text`));
+                const rStepTitles = Array.from(document.querySelectorAll(`.recipe-block[data-recipe-id="${i}"] .step-title-text`));
+                const rStepDesc = Array.from(document.querySelectorAll(`.recipe-block[data-recipe-id="${i}"] .step-desc`));
+                
+                try {
+                    const transSys = `You are an esoteric scholar translating magical texts strictly to ${tLang.toUpperCase()}. 
+CRITICAL LANGUAGE RULE: 100% of the text translated.
+Output strictly JSON. Schema:
+{
+  "title": "...", "desc": "...",
+  "prep": "...", "cook": "...", "diff": "...", "serv": "...",
+  "nutrition": { "cal": "...", "pro": "...", "carb": "...", "fat": "...", "ca": "...", "vitd": "...", "mag": "..." },
+  "ingredients": ["...", "..."],
+  "stepTitles": ["...", "..."],
+  "stepDesc": ["...", "..."]
+}`;
+                    const payload = { 
+                        title: titleNode ? titleNode.innerText : "", desc: descNode ? descNode.innerText : "", 
+                        prep: prepNode ? prepNode.innerText : "", cook: cookNode ? cookNode.innerText : "", diff: diffNode ? diffNode.innerText : "", serv: servNode ? servNode.innerText : "",
+                        nutrition: { cal: calNode ? calNode.innerText : "", pro: proNode ? proNode.innerText : "", carb: carbNode ? carbNode.innerText : "", fat: fatNode ? fatNode.innerText : "", ca: caNode ? caNode.innerText : "", vitd: vitdNode ? vitdNode.innerText : "", mag: magNode ? magNode.innerText : "" },
+                        ingredients: rIngrElements.map(el => el.innerHTML), stepTitles: rStepTitles.map(e=>e.innerText), stepDesc: rStepDesc.map(e=>e.innerText) 
+                    };
+                    
+                    const transData = await callGemini(`Translate this: ${JSON.stringify(payload)}`, transSys);
+                    
+                    if(titleNode && transData.title) titleNode.innerText = transData.title;
+                    if(descNode && transData.desc) descNode.innerText = transData.desc;
+                    if(prepNode && transData.prep) prepNode.innerText = transData.prep;
+                    if(cookNode && transData.cook) cookNode.innerText = transData.cook;
+                    if(diffNode && transData.diff) diffNode.innerText = transData.diff;
+                    if(servNode && transData.serv) servNode.innerText = transData.serv;
+                    
+                    if(transData.nutrition) {
+                        if(calNode && transData.nutrition.cal) calNode.innerText = transData.nutrition.cal;
+                        if(proNode && transData.nutrition.pro) proNode.innerText = transData.nutrition.pro;
+                        if(carbNode && transData.nutrition.carb) carbNode.innerText = transData.nutrition.carb;
+                        if(fatNode && transData.nutrition.fat) fatNode.innerText = transData.nutrition.fat;
+                        if(caNode && transData.nutrition.ca) caNode.innerText = transData.nutrition.ca;
+                        if(vitdNode && transData.nutrition.vitd) vitdNode.innerText = transData.nutrition.vitd;
+                        if(magNode && transData.nutrition.mag) magNode.innerText = transData.nutrition.mag;
+                    }
+
+                    rIngrElements.forEach((el, idx) => { if(transData.ingredients[idx]) el.innerHTML = transData.ingredients[idx]; });
+                    rStepTitles.forEach((el, idx) => { if(transData.stepTitles[idx]) el.innerHTML = transData.stepTitles[idx]; });
+                    rStepDesc.forEach((el, idx) => { if(transData.stepDesc[idx]) el.innerHTML = transData.stepDesc[idx]; });
+                    
+                    pages.forEach(p => {
+                        p.querySelectorAll('.lbl-prep').forEach(l => l.innerText = labels.prep);
+                        p.querySelectorAll('.lbl-cook').forEach(l => l.innerText = labels.cook);
+                        p.querySelectorAll('.lbl-diff').forEach(l => l.innerText = labels.diff);
+                        p.querySelectorAll('.lbl-serv').forEach(l => l.innerText = labels.serv);
+                        p.querySelectorAll('.lbl-nut').forEach(l => l.innerText = labels.nut);
+                        p.querySelectorAll('.lbl-perserving').forEach(l => l.innerText = labels.perServing);
+                        p.querySelectorAll('.lbl-cal').forEach(l => l.innerText = labels.cal);
+                        p.querySelectorAll('.lbl-pro').forEach(l => l.innerText = labels.pro);
+                        p.querySelectorAll('.lbl-carb').forEach(l => l.innerText = labels.carb);
+                        p.querySelectorAll('.lbl-fat').forEach(l => l.innerText = labels.fat);
+                        p.querySelectorAll('.lbl-ca').forEach(l => l.innerText = labels.ca);
+                        p.querySelectorAll('.lbl-vitd').forEach(l => l.innerText = labels.vitd);
+                        p.querySelectorAll('.lbl-mag').forEach(l => l.innerText = labels.mag);
+                        p.querySelectorAll('.lbl-ingr').forEach(h2 => h2.innerText = labels.ingr);
+                        p.querySelectorAll('.steps-header-box h2').forEach(h2 => {
+                            if(h2.innerText.match(/\d/)) h2.innerText = h2.innerText.replace(/^[^\d]+/, labels.step + ' ');
+                        });
+                        p.querySelectorAll('.step-title').forEach(st => {
+                            st.innerHTML = st.innerHTML.replace(/^[^\d]+/, labels.step + ' ');
+                        });
+                    });
+                    
+                    if(transData.title) globalTocEntries[i].title = transData.title;
+
+                } catch(e) { console.error("Error transmuting", i, e); }
+                await delay(3500); 
+            }
+            
+            const tocHead = document.querySelector('#pdfTOC .doc-h1'); 
+            if(tocHead) tocHead.innerText = labels.toc;
+            const tocItems = document.querySelectorAll('#pdfTOC .toc-title');
+            tocItems.forEach((el, idx) => { if(globalTocEntries[idx]) el.innerText = globalTocEntries[idx].title; });
+
+            updateStatus("Lingua trasmutata!", 100, globalTocEntries.length, globalTocEntries.length); 
+            showToast(`Magia convertita in ${tLang} con successo!`, "success");
+            DOM.btnLiveTranslate.disabled = false; setTimeout(() => DOM.progressSection.classList.add('hidden'), 2000);
+        });
+
+        DOM.savePdfBtn.addEventListener('click', () => {
+            if(!document.querySelector('.doc-h1')) return showToast("Evoca prima il tomo.", "warning");
+            showToast("Nel pannello di stampa attiva 'Grafica in background' per mantenere l'effetto pergamena.", "warning");
+            setTimeout(() => window.print(), 2500);
+        });
+
+        // EPUB save logic remains unchanged fundamentally, just uses magical toast words
+        DOM.saveEpubBtn.addEventListener('click', async () => {
+            if(globalTocEntries.length === 0) return showToast("Genera prima un libro.", "warning");
+            showToast("Legatura dell'EPUB in corso... L'incantesimo richiede tempo.", "info");
+            try {
+                const zip = new JSZip(); 
+                zip.file("mimetype", "application/epub+zip");
+                
+                const metaInf = zip.folder("META-INF"); 
+                metaInf.file("container.xml", `<?xml version="1.0"?><container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/></rootfiles></container>`);
+                
+                const oebps = zip.folder("OEBPS"); 
+                const imgFolder = oebps.folder("images");
+                const title = DOM.topicInput.value || "Grimorio";
+                
+                let manifestItems = [];
+                let spineItems = [];
+                let imageMap = new Map();
+                let imgCounter = 0;
+
+                const images = document.querySelectorAll('#bookPage img');
+                for (let i = 0; i < images.length; i++) {
+                    const src = images[i].src;
+                    if (!imageMap.has(src)) {
+                        const filename = `image_${imgCounter}.jpg`;
+                        imageMap.set(src, filename);
+                        try {
+                            const response = await fetch(src);
+                            const blob = await response.blob();
+                            imgFolder.file(filename, blob);
+                            manifestItems.push(`<item id="img_${imgCounter}" href="images/${filename}" media-type="image/jpeg"/>`);
+                            imgCounter++;
+                        } catch(e) {}
+                    }
+                }
+
+                const pages = document.querySelectorAll('.page-text, .page-bleed');
+                let fileCounter = 0;
+
+                for (let i = 0; i < pages.length; i++) {
+                    let p = pages[i].cloneNode(true);
+                    let imgs = p.querySelectorAll('img');
+                    imgs.forEach(img => { if (imageMap.has(img.src)) img.src = `images/${imageMap.get(img.src)}`; });
+                    
+                    let pageHtml = `<?xml version="1.0" encoding="utf-8"?><!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml"><head><title>Page ${fileCounter}</title><style>body{font-family:serif; background:#fdfbf7; margin: 0; padding: 5%; color:#2a2a2a;} img{max-width:100%; height:auto;} .step-row { margin-bottom: 20px; } .step-img-box { float: left; width: 150px; margin-right: 15px; } .step-content { overflow: hidden; } .ingr-item { margin-bottom: 10px; } .nutrition-panel { border: 1px solid #d4af37; padding: 15px; margin: 20px 0; background:rgba(255,255,255,0.5);}</style></head><body>${p.innerHTML}</body></html>`;
+                    
+                    const filename = `page_${fileCounter}.xhtml`;
+                    oebps.file(filename, pageHtml);
+                    manifestItems.push(`<item id="page_${fileCounter}" href="${filename}" media-type="application/xhtml+xml"/>`);
+                    spineItems.push(`<itemref idref="page_${fileCounter}"/>`);
+                    fileCounter++;
+                }
+
+                let epubTocHTML = `<?xml version="1.0" encoding="utf-8"?><html xmlns="http://www.w3.org/1999/xhtml"><head><title>Index</title></head><body><h1>Index</h1><ul>`;
+                globalTocEntries.forEach((e) => { epubTocHTML += `<li><a href="page_0.xhtml">${e.title}</a></li>`; });
+                epubTocHTML += `</ul></body></html>`;
+                oebps.file("toc.xhtml", epubTocHTML);
+                manifestItems.push(`<item id="toc" href="toc.xhtml" media-type="application/xhtml+xml" properties="nav"/>`);
+                spineItems.unshift(`<itemref idref="toc"/>`);
+
+                const langCode = DOM.languageInput.value.substring(0,2).toLowerCase();
+                oebps.file("content.opf", `<?xml version="1.0"?><package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="pub-id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>${title}</dc:title><dc:language>${langCode}</dc:language><dc:identifier id="pub-id">urn:uuid:${crypto.randomUUID()}</dc:identifier></metadata><manifest>${manifestItems.join('\n')}</manifest><spine>${spineItems.join('\n')}</spine></package>`);
+                
+                const content = await zip.generateAsync({type:"blob", compression: "STORE"});
+                const a = document.createElement('a'); a.href = URL.createObjectURL(content); a.download = `${title.replace(/[^a-z0-9]/gi, '_')}.epub`; a.click();
+                showToast("Tomo Esportato come EPUB!", "success");
+            } catch (e) { showToast("Errore durante l'esportazione.", "error"); }
+        });
+
+        // Save & Load
+        DOM.btnSaveProject.addEventListener('click', async () => {
+            if (!DOM.bookPage.innerHTML.trim() || DOM.bookPage.querySelectorAll('.recipe-block').length === 0) {
+                return showToast("Il grimorio è vuoto.", "warning");
+            }
+            showToast("Sigillamento dei dati in corso...", "info");
+            DOM.btnSaveProject.disabled = true;
+            try {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = DOM.bookPage.innerHTML;
+                const images = tempDiv.querySelectorAll('img');
+                
+                for(let img of images) {
+                    if(img.src.startsWith('blob:')) {
+                        const response = await fetch(img.src);
+                        const blob = await response.blob();
+                        const reader = new FileReader();
+                        const base64 = await new Promise((resolve) => {
+                            reader.onloadend = () => resolve(reader.result);
+                            reader.readAsDataURL(blob);
+                        });
+                        img.src = base64;
+                    }
+                }
+                
+                const projectData = {
+                    version: "4.0_Magic", topic: DOM.topicInput.value, style: DOM.styleInput.value, category: DOM.grimoireCategory.value, tradition: DOM.magicTradition.value,
+                    language: DOM.languageInput.value, trimSize: document.getElementById('trimSize').value,
+                    recipeCount: DOM.countInput.value, customList: DOM.customRecipeList.value, servings: DOM.servingsCount.value, visualSetting: DOM.visualSetting.value,
+                    toc: globalTocEntries, html: tempDiv.innerHTML
+                };
+                
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(projectData));
+                const a = document.createElement('a'); a.href = dataStr; a.download = `Grimorio_${DOM.topicInput.value.replace(/[^a-z0-9]/gi, '_') || 'Book'}.kdp`; a.click();
+                showToast("Grimorio sigillato sul PC!", "success");
+            } catch(e) { showToast("Errore: " + e.message, "error"); } finally { DOM.btnSaveProject.disabled = false; }
+        });
+
+        DOM.btnLoadProject.addEventListener('click', () => DOM.fileLoadProject.click());
+        DOM.fileLoadProject.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                showToast("Risveglio del grimorio...", "info");
+                try {
+                    const data = JSON.parse(event.target.result);
+                    if (data.topic) DOM.topicInput.value = data.topic;
+                    if (data.style) DOM.styleInput.value = data.style;
+                    if (data.language) DOM.languageInput.value = data.language;
+                    if (data.trimSize) document.getElementById('trimSize').value = data.trimSize;
+                    if (data.recipeCount) DOM.countInput.value = data.recipeCount;
+                    if (data.customList) DOM.customRecipeList.value = data.customList;
+                    if (data.servings) DOM.servingsCount.value = data.servings;
+                    if (data.visualSetting) DOM.visualSetting.value = data.visualSetting;
+                    if (data.category) DOM.grimoireCategory.value = data.category;
+                    if (data.tradition) DOM.magicTradition.value = data.tradition;
+                    if (data.toc) globalTocEntries = data.toc;
+                    
+                    applyLayoutEngine();
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = data.html;
+                    const images = tempDiv.querySelectorAll('img');
+                    
+                    for(let img of images) {
+                        if(img.src.startsWith('data:image')) {
+                            const isSmall = img.classList.contains('step-img-small');
+                            img.src = await processImageToBlobUrl(img.src, isSmall ? 1000 : 2400, 0.9);
+                        }
+                    }
+                    DOM.bookPage.innerHTML = tempDiv.innerHTML;
+                    showToast("Grimorio risvegliato con successo!", "success");
+                } catch(err) { showToast("Pergamena corrotta.", "error"); }
+                DOM.fileLoadProject.value = ""; 
+            };
+            reader.readAsText(file);
+        });
+
+        DOM.btnResetProject.addEventListener('click', () => DOM.resetConfirmModal.classList.add('show'));
+        DOM.btnCancelReset.addEventListener('click', () => DOM.resetConfirmModal.classList.remove('show'));
+        DOM.btnConfirmReset.addEventListener('click', () => {
+            DOM.bookPage.innerHTML = `<div class="page-text" style="justify-content: center; align-items: center;" id="welcomePlaceholder"><h1 class="doc-title" style="color: #2c1b4d; border-bottom: 2px solid #d4af37; padding-bottom: 20px;">Grimorium Verum</h1><p style="color: #5a4b41; font-size: calc(14pt * var(--font-scale)); margin-top: 20px; font-style: italic;">Le pagine sono tornate vuote.</p></div>`;
+            generatedImages = []; globalTocEntries = []; DOM.topicInput.value = ""; DOM.styleInput.value = ""; DOM.customRecipeList.value = ""; 
+            DOM.visualSetting.value = "Ancient manuscript style, vintage botanical and crystal sketches, dark academia, esoteric";
+            DOM.aplusBannersContainer.innerHTML = ""; DOM.btnDownloadAPlus.classList.add('hidden');
+            DOM.progressSection.classList.add('hidden');
+            DOM.resetConfirmModal.classList.remove('show');
+            showToast("Tutto è stato ridotto in cenere.", "success");
+        });
+
+        // A+ Content Generation
+        DOM.btnOpenAPlusModal.addEventListener('click', () => { DOM.aplusModal.classList.add('show'); if (DOM.aplusBannersContainer.innerHTML.trim() === '') generateAPlusContent(); });
+        DOM.closeAPlusModal.addEventListener('click', () => DOM.aplusModal.classList.remove('show'));
+        DOM.btnRegenerateAPlus.addEventListener('click', generateAPlusContent);
+
+        function getCleanPageHtml(index) {
+            const pages = document.querySelectorAll('.recipe-block[data-recipe-id="0"]');
+            const width = getComputedStyle(document.documentElement).getPropertyValue('--page-width-px').trim();
+            const height = getComputedStyle(document.documentElement).getPropertyValue('--page-height-px').trim();
+            
+            let clone;
+            if(pages[index]) {
+                clone = pages[index].cloneNode(true);
+            } else {
+                clone = document.createElement('div');
+                clone.style.background = 'var(--parchment)';
+            }
+            
+            clone.style.width = width;
+            clone.style.height = height;
+            clone.style.position = 'absolute';
+            clone.style.top = '0';
+            clone.style.left = '0';
+            clone.style.margin = '0';
+            clone.style.boxShadow = 'none';
+            clone.style.border = 'none';
+            
+            clone.querySelectorAll('.editable-image-container').forEach(el => {
+                el.className = '';
+                el.onclick = null;
+            });
+            
+            return `<div style="width: ${width}; height: ${height}; overflow: hidden; position: relative;">${clone.outerHTML}</div>`;
+        }
+
+        function createFlatBookMockup(pageL, pageR) {
+            const width = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--page-width-px'));
+            const height = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--page-height-px'));
+            const totalWidth = width * 2;
+            const scale = Math.min(360 / totalWidth, 240 / height);
+
+            return `
+            <div class="aplus-mockup-wrapper" style="width: 400px; height: 280px; position: relative; display: flex; align-items: center; justify-content: center; flex-shrink: 0; perspective: 1000px;">
+                <div class="aplus-mockup-scaler" style="position: absolute; transform: scale(${scale}); transform-origin: center center; display: flex;">
+                    
+                    <!-- Cover Illusion (Dark Magic Book) -->
+                    <div style="position: absolute; bottom: -12px; left: -4px; right: -4px; height: 12px; background: #1a0b2e; border-radius: 0 0 4px 4px; border: 2px solid #d4af37; border-top: none; box-shadow: 0 15px 30px rgba(0,0,0,0.8);"></div>
+                    
+                    <!-- Main Open Book Container -->
+                    <div class="aplus-flat-book" style="display: flex; box-shadow: 0 20px 40px rgba(0,0,0,0.9); border-radius: 2px; position: relative; background: #fdfbf7; overflow: hidden; border: 1px solid #d4af37;">
+                        
+                        <!-- Left Page -->
+                        <div style="width: ${width}px; height: ${height}px; overflow: hidden; position: relative; background: #fdfbf7;">
+                            ${pageL}
+                            <div style="position: absolute; inset: 0; background: linear-gradient(to right, rgba(255,255,255,0) 80%, rgba(212,175,55,0.1) 92%, rgba(0,0,0,0.4) 100%); pointer-events: none; z-index: 100;"></div>
+                        </div>
+                        
+                        <!-- Center Spine Crease -->
+                        <div style="width: 6px; background: linear-gradient(to right, #2a1b3d 0%, #0a060f 50%, #2a1b3d 100%); z-index: 101;"></div>
+
+                        <!-- Right Page -->
+                        <div style="width: ${width}px; height: ${height}px; overflow: hidden; position: relative; background: #fdfbf7;">
+                            ${pageR}
+                            <div style="position: absolute; inset: 0; background: linear-gradient(to left, rgba(255,255,255,0) 80%, rgba(212,175,55,0.1) 92%, rgba(0,0,0,0.4) 100%); pointer-events: none; z-index: 100;"></div>
+                        </div>
+                        
+                        <!-- Top Soft Highlight -->
+                        <div style="position: absolute; top: 0; left: 0; right: 0; height: 2px; background: rgba(212,175,55,0.5); z-index: 102; pointer-events: none;"></div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        async function generateAPlusContent() {
+            if(globalTocEntries.length < 1) return showToast("Evoca prima un tomo per estrarre le pagine.", "warning");
+            DOM.btnRegenerateAPlus.disabled = true; DOM.btnRegenAPlusText.classList.add('hidden'); DOM.btnRegenAPlusLoader.classList.remove('hidden');
+            try {
+                const sys = `You are an esoteric marketing expert writing Amazon A+ Content copy strictly in ${DOM.languageInput.value}. Output JSON: { "b1": { "headline": "...", "sub": "..." }, "b2": { "headline": "...", "bullets": ["...", "...", "..."] }, "b3": { "headline": "...", "sub": "..." } }`;
+                const promptData = DOM.topicInput.value || DOM.customRecipeList.value || "Grimoire";
+                const copy = await callGemini(`Write mysterious A+ marketing copy for an esoteric book about '${promptData}' in ${DOM.languageInput.value}.`, sys);
+                
+                DOM.aplusBannersContainer.innerHTML = `
+                    <!-- Banner 1: Dark Magic -->
+                    <div class="aplus-banner" style="width: 970px; height: 300px; background: radial-gradient(circle at 30% 50%, #2a1b3d 0%, #0a060f 100%); color: var(--text-light); display: flex; align-items: center; padding: 0 40px; justify-content: space-between; box-sizing: border-box; overflow: hidden; flex-shrink: 0; border: 2px solid #d4af37;">
+                        <div style="flex: 1; padding-right: 30px; display: flex; flex-direction: column; justify-content: center; min-width: 0;">
+                            <h2 contenteditable="true" class="editable-text" style="font-family: 'Cinzel', serif; font-size: 2.3rem; color: #d4af37; margin: 0 0 1rem 0; line-height: 1.2; text-shadow: 0 2px 10px rgba(212,175,55,0.3);">${copy.b1.headline}</h2>
+                            <p contenteditable="true" class="editable-text" style="font-family: 'Crimson Text', serif; font-size: 1.2rem; color: #eaddcf; margin: 0; line-height: 1.6; font-style: italic;">${copy.b1.sub}</p>
+                        </div>
+                        ${createFlatBookMockup(getCleanPageHtml(0), getCleanPageHtml(1))}
+                    </div>
+                    
+                    <!-- Banner 2: Parchment Features -->
+                    <div class="aplus-banner" style="width: 970px; height: 300px; background: #1a1128; display: flex; align-items: center; padding: 0 40px; justify-content: space-between; box-sizing: border-box; overflow: hidden; flex-shrink: 0; border: 1px solid #3b2854;">
+                        ${createFlatBookMockup(getCleanPageHtml(2), getCleanPageHtml(3))}
+                        <div style="flex: 1; padding-left: 30px; display: flex; flex-direction: column; justify-content: center; min-width: 0;">
+                            <h2 contenteditable="true" class="editable-text" style="font-family: 'Cinzel', serif; font-size: 2rem; color: #d4af37; margin: 0 0 1.2rem 0; line-height: 1.2;">${copy.b2.headline}</h2>
+                            <ul style="list-style: none; padding: 0; margin: 0; font-family: 'Crimson Text', serif;">
+                                ${copy.b2.bullets.map(b => `<li contenteditable="true" class="editable-text" style="margin-bottom: 0.8rem; display: flex; gap: 12px; font-size: 1.15rem; color: #eaddcf; align-items: flex-start;"><strong style="color: #d4af37; font-size: 1.2rem; line-height: 1;">✦</strong> <span>${b}</span></li>`).join('')}
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Banner 3: Velvet Steps -->
+                    <div class="aplus-banner" style="width: 970px; height: 300px; background: #0f0a18; display: flex; align-items: center; padding: 0 40px; justify-content: space-between; box-sizing: border-box; overflow: hidden; flex-shrink: 0; border: 1px solid #3b2854;">
+                        <div style="flex: 1; padding-right: 30px; display: flex; flex-direction: column; justify-content: center; min-width: 0;">
+                            <h2 contenteditable="true" class="editable-text" style="font-family: 'Cinzel', serif; font-size: 2.3rem; color: #d4af37; margin: 0 0 1rem 0; line-height: 1.2;">${copy.b3.headline}</h2>
+                            <p contenteditable="true" class="editable-text" style="font-family: 'Crimson Text', serif; font-size: 1.2rem; color: #8a7b65; margin: 0; line-height: 1.6;">${copy.b3.sub}</p>
+                        </div>
+                        ${createFlatBookMockup(getCleanPageHtml(4), getCleanPageHtml(5))}
+                    </div>
+                `;
+                DOM.btnDownloadAPlus.classList.remove('hidden');
+            } catch(e) { showToast(e.message, "error"); } finally { DOM.btnRegenerateAPlus.disabled = false; DOM.btnRegenAPlusText.classList.remove('hidden'); DOM.btnRegenAPlusLoader.classList.add('hidden'); }
+        }
+
+        DOM.btnDownloadAPlus.addEventListener('click', async () => {
+            const banners = document.querySelectorAll('.aplus-banner');
+            for(let i=0; i<banners.length; i++) {
+                const canvas = await html2canvas(banners[i], { scale: 2, useCORS: true, backgroundColor: null });
+                const a = document.createElement('a'); a.href = canvas.toDataURL('image/jpeg', 0.9); a.download = `Arcane_Banner_${i+1}.jpg`; a.click(); await delay(500);
+            }
+        });
+
+    </script>
+</body>
+</html>
