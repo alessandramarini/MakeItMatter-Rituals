@@ -209,10 +209,7 @@
         <div class="w-[360px] border-r border-[#2a1b3d] flex flex-col shrink-0 z-10" style="background-color: var(--bg-panel);">
             <div class="p-5 overflow-y-auto flex-1 custom-scrollbar">
                 
-                <div class="mb-4 bg-[#110b1a] p-3 rounded border border-purple-900/50">
-                    <label class="block text-[10px] font-bold text-purple-400 mb-1 uppercase tracking-wider" style="font-family: 'Cinzel', serif;">Gemini API Key</label>
-                    <input type="password" id="apiKeyInput" class="w-full p-2 bg-[#0a060f] border border-[#3b2854] rounded text-xs outline-none focus:border-[#d4af37]" placeholder="Inserisci chiave per l'Evocazione" style="color: var(--text-light);">
-                </div>
+                <!-- Rimosso il campo per la chiave API per usare nativamente la chiave dell'ambiente -->
 
                 <div class="bg-[#150e1f] rounded-lg p-5 mb-4 border border-[#3b2854]">
                     <h3 class="font-semibold mb-4 flex items-center gap-2 text-sm uppercase tracking-wider" style="color: var(--accent-gold); font-family: 'Cinzel', serif;">
@@ -421,7 +418,7 @@
             btnStart: document.getElementById('btnStartAutoPilot'), btnText: document.getElementById('btnStartText'), btnLoader: document.getElementById('btnStartLoader'),
             topicInput: document.getElementById('bookTopic'), styleInput: document.getElementById('bookStyle'), languageInput: document.getElementById('bookLanguage'), countInput: document.getElementById('recipeCount'), trimSize: document.getElementById('trimSize'),
             grimoireCategory: document.getElementById('grimoireCategory'), magicTradition: document.getElementById('magicTradition'),
-            bookPage: document.getElementById('bookPage'), apiKeyInput: document.getElementById('apiKeyInput'),
+            bookPage: document.getElementById('bookPage'),
             customRecipeList: document.getElementById('customRecipeList'), servingsCount: document.getElementById('servingsCount'), visualSetting: document.getElementById('visualSetting'),
             savePdfBtn: document.getElementById('savePdfBtn'), saveEpubBtn: document.getElementById('saveEpubBtn'), btnLiveTranslate: document.getElementById('btnLiveTranslate'),
             btnSaveProject: document.getElementById('btnSaveProject'), btnLoadProject: document.getElementById('btnLoadProject'), fileLoadProject: document.getElementById('fileLoadProject'),
@@ -433,7 +430,9 @@
             btnResetProject: document.getElementById('btnResetProject'), resetConfirmModal: document.getElementById('resetConfirmModal'), btnCancelReset: document.getElementById('btnCancelReset'), btnConfirmReset: document.getElementById('btnConfirmReset')
         };
 
-        const getAPIKey = () => DOM.apiKeyInput.value.trim() || "";
+        // Utilizza nativamente le chiavi di Gemini dell'ambiente
+        const getAPIKey = () => ""; 
+
         let generatedImages = [];
         let imageToRegenerate = null, basePromptForRegen = "";
         let globalTocEntries = [];
@@ -485,13 +484,12 @@
                     const response = await fetch(urlGenerator(), optionsGenerator());
                     if (!response.ok) {
                         const err = await response.json().catch(()=>({}));
-                        if (response.status === 400 && err.error?.message?.includes("API key not valid")) throw new Error("Chiave di Evocazione (API Key) errata.");
                         if (response.status === 429 || response.status === 500) throw new Error("Energie disturbate (Rate limit / Server).");
                         throw new Error(`Errore Arcano HTTP ${response.status}`);
                     }
                     return response;
                 } catch (error) {
-                    if(error.message.includes("API Key") || retries === maxRetries - 1) throw error;
+                    if(retries === maxRetries - 1) throw error;
                     updateStatus(`Fluttuazioni magiche. Ritento in ${5 * (retries + 1)}s...`);
                     await delay(5000 * (retries + 1)); 
                 }
@@ -514,7 +512,6 @@
         }
 
         async function callGeminiImage(prompt, aspect, maxWidth = 1000, quality = 0.85) {
-            // Updated safety append for esoteric/mystical illustrations
             const safetyAppend = ". Exquisitely detailed vintage book illustration style, esoteric, occult, magical grimoire aesthetic, dark academia, parchment background feel, mystical lighting, NO text, NO letters, NO modern elements.";
             const urlGen = () => `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${getAPIKey()}`;
             const optGen = () => ({
@@ -760,7 +757,7 @@ Schema:
                                 const imgStepFallback = imgStep || `https://placehold.co/300/1a1128/d4af37?text=${labels.step}+${s+1}`;
                                 stepsHtml += `
                                     <div class="step-row">
-                                        <div class="step-img-box">${wrapImageForEdit(`<img src="${imgStepFallback}" class="step-img-small" alt="${labels.step}${s+1}" />`, rData.steps[s].imagePrompt)}</div>
+                                        <div class="step-img-box">${wrapImageForEdit(`<img src="${imgStepFallback}" class="step-img-small" alt="${labels.step} ${s+1}" />`, rData.steps[s].imagePrompt)}</div>
                                         <div class="step-content">
                                             <h3 class="step-title">${labels.step} ${s+1}: <span class="step-title-text">${rData.steps[s].title}</span></h3>
                                             <p class="step-desc">${rData.steps[s].instruction}</p>
@@ -798,7 +795,7 @@ Schema:
             }
         });
 
-        // Translation logic slightly adapted to preserve new colors
+        // Translation logic
         DOM.btnLiveTranslate.addEventListener('click', async () => {
             const tLang = DOM.languageInput.value; 
             const labels = i18n[tLang] || i18n["Italiano"];
@@ -924,7 +921,6 @@ Output strictly JSON. Schema:
             setTimeout(() => window.print(), 2500);
         });
 
-        // EPUB save logic remains unchanged fundamentally, just uses magical toast words
         DOM.saveEpubBtn.addEventListener('click', async () => {
             if(globalTocEntries.length === 0) return showToast("Genera prima un libro.", "warning");
             showToast("Legatura dell'EPUB in corso... L'incantesimo richiede tempo.", "info");
