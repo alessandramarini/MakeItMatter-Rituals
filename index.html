@@ -209,8 +209,6 @@
         <div class="w-[360px] border-r border-[#2a1b3d] flex flex-col shrink-0 z-10" style="background-color: var(--bg-panel);">
             <div class="p-5 overflow-y-auto flex-1 custom-scrollbar">
                 
-                <!-- Rimosso il campo per la chiave API per usare nativamente la chiave dell'ambiente -->
-
                 <div class="bg-[#150e1f] rounded-lg p-5 mb-4 border border-[#3b2854]">
                     <h3 class="font-semibold mb-4 flex items-center gap-2 text-sm uppercase tracking-wider" style="color: var(--accent-gold); font-family: 'Cinzel', serif;">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
@@ -245,8 +243,24 @@
                         </select>
                     </div>
 
+                    <!-- 1. TENDINA INTENTO -->
                     <div class="mb-4">
-                        <label class="block text-xs font-medium text-[#8a7b65] mb-1.5" style="font-family: 'Cinzel', serif;">Intento / Scopo del Tomo</label>
+                        <div class="flex justify-between items-end mb-1.5">
+                            <label class="block text-xs font-medium text-[#8a7b65]" style="font-family: 'Cinzel', serif;">Intento / Scopo del Tomo</label>
+                            <select id="presetTopic" class="text-[10px] bg-[#1a1128] text-[#d4af37] border border-[#3b2854] rounded outline-none p-1 max-w-[140px] cursor-pointer" title="Scegli un intento preimpostato">
+                                <option value="">Idee rapide...</option>
+                                <option value="Incantesimi di Protezione per la casa e la famiglia">Protezione Casa</option>
+                                <option value="Rituali di Prosperità, Ricchezza e Abbondanza">Prosperità e Denaro</option>
+                                <option value="Legamenti d'Amore, Passione e Magia Rossa">Amore e Passione</option>
+                                <option value="Guarigione Spirituale e Allineamento dei Chakra">Guarigione Spirituale</option>
+                                <option value="Maledizioni, Fatture, Malocchio e Magia Oscura">Magia Oscura / Vendetta</option>
+                                <option value="Divinazione, Sogni Lucidi e Contatto con gli Spiriti">Divinazione e Spiriti</option>
+                                <option value="Magia Verde, Orti e Poteri Curativi delle Erbe">Magia Verde Botanica</option>
+                                <option value="Incantesimi di Bando e Purificazione delle Energie">Bando e Purificazione</option>
+                                <option value="Magia Planetaria e Invocazione degli Astri">Magia Planetaria</option>
+                                <option value="Incantesimi per il Successo nel Lavoro e nello Studio">Successo e Carriera</option>
+                            </select>
+                        </div>
                         <textarea id="bookTopic" class="w-full h-12 p-3 bg-[#0a060f] border border-[#3b2854] rounded focus:ring-1 focus:ring-[#d4af37] outline-none text-sm resize-none" placeholder="es. 'Incantesimi di Protezione per la casa'" style="color: var(--text-light);"></textarea>
                     </div>
 
@@ -255,24 +269,62 @@
                         <textarea id="customRecipeList" class="w-full h-16 p-3 bg-[#0a060f] border border-[#3b2854] rounded focus:ring-1 focus:ring-[#d4af37] outline-none text-sm resize-none" placeholder="es. 'Sigillo del Fuoco, Pozione Lunare, Scudo Rifllettente'" style="color: var(--text-light);"></textarea>
                     </div>
 
+                    <!-- 2. TENDINA DURATA / BERSAGLIO -->
                     <div class="grid grid-cols-2 gap-2 mb-4">
                         <div>
                             <label class="block text-xs font-medium text-[#8a7b65] mb-1.5" style="font-family: 'Cinzel', serif;">N. Rituali</label>
                             <input type="number" id="recipeCount" value="2" min="1" max="100" class="w-full p-2.5 bg-[#0a060f] border border-[#3b2854] rounded outline-none text-sm" style="color: var(--text-light);">
                         </div>
-                        <div>
-                            <label class="block text-xs font-medium text-[#8a7b65] mb-1.5" style="font-family: 'Cinzel', serif;">Durata / Livello</label>
-                            <input type="text" id="servingsCount" value="1 Ciclo Lunare" class="w-full p-2.5 bg-[#0a060f] border border-[#3b2854] rounded outline-none text-sm" style="color: var(--text-light);">
+                        <div title="Specifica quanto dura l'incantesimo (es. '1 Ciclo Lunare', '3 Giorni') oppure su chi/quanti agisce (es. '1 Persona', 'La Casa'). Verrà mostrato come parametro magico.">
+                            <div class="flex justify-between items-end mb-1.5">
+                                <label class="block text-xs font-medium text-[#8a7b65] cursor-help" style="font-family: 'Cinzel', serif;">Durata / Target ℹ️</label>
+                                <select id="presetDuration" class="text-[10px] bg-[#1a1128] text-[#8a7b65] border border-[#3b2854] rounded outline-none p-1 max-w-[50px] cursor-pointer">
+                                    <option value="">...</option>
+                                    <option value="1 Ciclo Lunare">1 Ciclo Lunare</option>
+                                    <option value="Fino al prossimo Solstizio">Fino al Solstizio</option>
+                                    <option value="3 Notti di Luna Piena">3 Notti</option>
+                                    <option value="Effetto Permanente">Permanente</option>
+                                    <option value="La Casa e gli Abitanti">Protezione Casa</option>
+                                    <option value="1 Singolo Bersaglio">1 Bersaglio</option>
+                                    <option value="Uso Singolo (Pozione)">Uso Singolo</option>
+                                </select>
+                            </div>
+                            <input type="text" id="servingsCount" value="" placeholder="Se vuoto, decide il fato" class="w-full p-2.5 bg-[#0a060f] border border-[#3b2854] rounded outline-none text-sm" style="color: var(--text-light);">
                         </div>
                     </div>
 
+                    <!-- 3. TENDINA STILE ILLUSTRATIVO -->
                     <div class="mb-4">
-                        <label class="block text-xs font-medium text-[#d4af37] mb-1.5" style="font-family: 'Cinzel', serif;">Stile Illustrazioni (Estetica)</label>
-                        <textarea id="visualSetting" class="w-full h-16 p-3 bg-[#0a060f] border border-[#d4af37] rounded focus:ring-1 focus:ring-[#d4af37] outline-none text-sm resize-none" placeholder="es. 'Ancient manuscript style, charcoal sketches, dark academia, mystic lighting'" style="color: var(--text-light);">Ancient manuscript style, vintage botanical and crystal sketches, dark academia, esoteric</textarea>
+                        <div class="flex justify-between items-end mb-1.5">
+                            <label class="block text-xs font-medium text-[#d4af37]" style="font-family: 'Cinzel', serif;">Stile Illustrazioni (Estetica)</label>
+                            <select id="presetVisual" class="text-[10px] bg-[#1a1128] text-[#d4af37] border border-[#d4af37]/50 rounded outline-none p-1 max-w-[140px] cursor-pointer" title="Scegli uno stile artistico">
+                                <option value="">Idee rapide...</option>
+                                <option value="Ancient esoteric manuscript style, vintage botanical and crystal sketches, dark academia, esoteric">Manoscritto Antico</option>
+                                <option value="Medieval woodblock prints, alchemical engravings, black and white ink, occult geometry">Incisioni Alchemiche</option>
+                                <option value="Dark witchcore photography, dimly lit, candlelight, mysterious artifacts, hyperrealistic">Fotografia Witchcore</option>
+                                <option value="Tarot card art style, mystical, symbolic, art nouveau influences, golden accents">Stile Tarocchi (Art Nouveau)</option>
+                                <option value="Chaotic charcoal sketches, blurred edges, madness, lovecraftian, creepy">Schizzi Macabri (Carboncino)</option>
+                                <option value="Luminous ethereal watercolor, high fantasy magic, glowing auras, peaceful and divine">Acquerello Etereo (Luminoso)</option>
+                            </select>
+                        </div>
+                        <textarea id="visualSetting" class="w-full h-12 p-3 bg-[#0a060f] border border-[#d4af37] rounded focus:ring-1 focus:ring-[#d4af37] outline-none text-sm resize-none" placeholder="Es. 'Carboncino oscuro'. Se vuoto, illustra a piacere..." style="color: var(--text-light);"></textarea>
                     </div>
 
+                    <!-- 4. TENDINA REGOLE PROIBITE -->
                     <div class="mb-4">
-                        <label class="block text-xs font-medium text-purple-400 mb-1.5" style="font-family: 'Cinzel', serif;">Istruzioni Proibite / Regole</label>
+                        <div class="flex justify-between items-end mb-1.5">
+                            <label class="block text-xs font-medium text-purple-400" style="font-family: 'Cinzel', serif;">Istruzioni Proibite / Regole</label>
+                            <select id="presetStyle" class="text-[10px] bg-[#1a1128] text-purple-400 border border-purple-900/50 rounded outline-none p-1 max-w-[140px] cursor-pointer" title="Aggiungi una regola arcana">
+                                <option value="">Aggiungi Regola...</option>
+                                <option value="Scrivi tutto in rima baciata, come un'antica filastrocca streghesca.">Scrivi in Rima</option>
+                                <option value="Usa un tono minaccioso, oscuro e lovecraftiano. Non usare mai termini moderni.">Tono Oscuro/Macabro</option>
+                                <option value="Vieta assolutamente l'uso di sangue o sacrifici animali. Sostituisci tutto con linfa, acqua o vino.">No Sangue/Sacrifici</option>
+                                <option value="Includi sempre una preghiera o invocazione in pseudo-latino alla fine di ogni rituale.">Aggiungi Invocazione Latina</option>
+                                <option value="Stile accademico, come un grimorio rinascimentale scritto da un erudito dell'occulto.">Stile Alchemico Accademico</option>
+                                <option value="Tono benevolo e materno, come una guida wiccan rassicurante per streghe alle prime armi.">Tono Benevolo/Wiccan</option>
+                                <option value="Stile criptico e caotico. Usa metafore surreali e riferimenti a divinità dimenticate o stelle morte.">Stile Criptico/Caotico</option>
+                            </select>
+                        </div>
                         <textarea id="bookStyle" class="w-full h-12 p-3 bg-[#0a060f] border border-[#3b2854] rounded focus:ring-1 focus:ring-purple-500 outline-none text-sm resize-none" placeholder="es. 'Usa un tono oscuro, scrivi in rima, non usare sangue'" style="color: var(--text-light);"></textarea>
                     </div>
 
@@ -418,6 +470,8 @@
             btnStart: document.getElementById('btnStartAutoPilot'), btnText: document.getElementById('btnStartText'), btnLoader: document.getElementById('btnStartLoader'),
             topicInput: document.getElementById('bookTopic'), styleInput: document.getElementById('bookStyle'), languageInput: document.getElementById('bookLanguage'), countInput: document.getElementById('recipeCount'), trimSize: document.getElementById('trimSize'),
             grimoireCategory: document.getElementById('grimoireCategory'), magicTradition: document.getElementById('magicTradition'),
+            presetTopic: document.getElementById('presetTopic'), presetStyle: document.getElementById('presetStyle'),
+            presetDuration: document.getElementById('presetDuration'), presetVisual: document.getElementById('presetVisual'),
             bookPage: document.getElementById('bookPage'),
             customRecipeList: document.getElementById('customRecipeList'), servingsCount: document.getElementById('servingsCount'), visualSetting: document.getElementById('visualSetting'),
             savePdfBtn: document.getElementById('savePdfBtn'), saveEpubBtn: document.getElementById('saveEpubBtn'), btnLiveTranslate: document.getElementById('btnLiveTranslate'),
@@ -430,12 +484,30 @@
             btnResetProject: document.getElementById('btnResetProject'), resetConfirmModal: document.getElementById('resetConfirmModal'), btnCancelReset: document.getElementById('btnCancelReset'), btnConfirmReset: document.getElementById('btnConfirmReset')
         };
 
-        // Utilizza nativamente le chiavi di Gemini dell'ambiente
-        const getAPIKey = () => ""; 
-
+        const getAPIKey = () => ""; // Usa nativamente la chiave dell'ambiente collaborativo
         let generatedImages = [];
         let imageToRegenerate = null, basePromptForRegen = "";
         let globalTocEntries = [];
+
+        // Gestione inserimento rapido da tendine ibride
+        if(DOM.presetTopic) DOM.presetTopic.addEventListener('change', (e) => { 
+            if(e.target.value) DOM.topicInput.value = e.target.value; 
+            e.target.selectedIndex = 0; 
+        });
+        if(DOM.presetStyle) DOM.presetStyle.addEventListener('change', (e) => { 
+            if(e.target.value) { 
+                DOM.styleInput.value = DOM.styleInput.value ? DOM.styleInput.value + " " + e.target.value : e.target.value; 
+            }
+            e.target.selectedIndex = 0; 
+        });
+        if(DOM.presetDuration) DOM.presetDuration.addEventListener('change', (e) => { 
+            if(e.target.value) DOM.servingsCount.value = e.target.value; 
+            e.target.selectedIndex = 0; 
+        });
+        if(DOM.presetVisual) DOM.presetVisual.addEventListener('change', (e) => { 
+            if(e.target.value) DOM.visualSetting.value = e.target.value; 
+            e.target.selectedIndex = 0; 
+        });
 
         // Updated i18n for Magic/Grimoire context
         const i18n = {
@@ -512,7 +584,7 @@
         }
 
         async function callGeminiImage(prompt, aspect, maxWidth = 1000, quality = 0.85) {
-            const safetyAppend = ". Exquisitely detailed vintage book illustration style, esoteric, occult, magical grimoire aesthetic, dark academia, parchment background feel, mystical lighting, NO text, NO letters, NO modern elements.";
+            const safetyAppend = ". NO text, NO letters, NO modern elements. Pure esoteric visual.";
             const urlGen = () => `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent?key=${getAPIKey()}`;
             const optGen = () => ({
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -619,8 +691,10 @@
             const tradition = DOM.magicTradition.value;
             const numRecipes = parseInt(DOM.countInput.value);
             const customList = DOM.customRecipeList.value.trim();
-            const servingsCount = DOM.servingsCount.value || "1 Ciclo Lunare";
-            const visualSetting = DOM.visualSetting.value.trim();
+            
+            // Fato logic per i campi ibridi (se vuoti)
+            const servingsCount = DOM.servingsCount.value.trim() || "Volere degli Astri"; 
+            const visualSetting = DOM.visualSetting.value.trim(); // Se vuoto lo gestiamo omettendo il prompt
             
             if(!topic && !customList) return showToast("Dichiara un Intento o una Lista di Incantesimi.", "warning");
 
@@ -637,7 +711,7 @@
             
             const specificInstructions = DOM.styleInput.value.trim();
             const instructionInjection = specificInstructions ? ` CRITICAL RULES: ${specificInstructions}.` : "";
-            const visualSettingPrompt = visualSetting ? `. CRITICAL VISUAL REQUIREMENT: Set all image prompts in this exact aesthetic: "${visualSetting}".` : '';
+            const visualSettingPrompt = visualSetting ? `. CRITICAL VISUAL REQUIREMENT: Set all image prompts strictly in this exact artistic style and aesthetic: "${visualSetting}".` : '. VISUAL REQUIREMENT: Use an esoteric, dark academia, or magical manuscript aesthetic.';
 
             try {
                 updateStatus(`Canalizzazione Indice in ${lang}...`, 5);
@@ -795,7 +869,6 @@ Schema:
             }
         });
 
-        // Translation logic
         DOM.btnLiveTranslate.addEventListener('click', async () => {
             const tLang = DOM.languageInput.value; 
             const labels = i18n[tLang] || i18n["Italiano"];
@@ -989,7 +1062,6 @@ Output strictly JSON. Schema:
             } catch (e) { showToast("Errore durante l'esportazione.", "error"); }
         });
 
-        // Save & Load
         DOM.btnSaveProject.addEventListener('click', async () => {
             if (!DOM.bookPage.innerHTML.trim() || DOM.bookPage.querySelectorAll('.recipe-block').length === 0) {
                 return showToast("Il grimorio è vuoto.", "warning");
@@ -1072,14 +1144,13 @@ Output strictly JSON. Schema:
         DOM.btnConfirmReset.addEventListener('click', () => {
             DOM.bookPage.innerHTML = `<div class="page-text" style="justify-content: center; align-items: center;" id="welcomePlaceholder"><h1 class="doc-title" style="color: #2c1b4d; border-bottom: 2px solid #d4af37; padding-bottom: 20px;">Grimorium Verum</h1><p style="color: #5a4b41; font-size: calc(14pt * var(--font-scale)); margin-top: 20px; font-style: italic;">Le pagine sono tornate vuote.</p></div>`;
             generatedImages = []; globalTocEntries = []; DOM.topicInput.value = ""; DOM.styleInput.value = ""; DOM.customRecipeList.value = ""; 
-            DOM.visualSetting.value = "Ancient manuscript style, vintage botanical and crystal sketches, dark academia, esoteric";
+            DOM.visualSetting.value = ""; DOM.servingsCount.value = "";
             DOM.aplusBannersContainer.innerHTML = ""; DOM.btnDownloadAPlus.classList.add('hidden');
             DOM.progressSection.classList.add('hidden');
             DOM.resetConfirmModal.classList.remove('show');
             showToast("Tutto è stato ridotto in cenere.", "success");
         });
 
-        // A+ Content Generation
         DOM.btnOpenAPlusModal.addEventListener('click', () => { DOM.aplusModal.classList.add('show'); if (DOM.aplusBannersContainer.innerHTML.trim() === '') generateAPlusContent(); });
         DOM.closeAPlusModal.addEventListener('click', () => DOM.aplusModal.classList.remove('show'));
         DOM.btnRegenerateAPlus.addEventListener('click', generateAPlusContent);
